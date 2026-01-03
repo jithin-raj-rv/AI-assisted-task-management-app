@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:to_do_list/providers.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -27,11 +27,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     setState(() => _loading = true);
 
     try {
+      final auth = ref.read(authServiceProvider);
       if (_isSignUp) {
-        await Supabase.instance.client.auth.signUp(email: email, password: pass);
+        await auth.signUp(email, pass);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign up successful! Please check your email.')));
       } else {
-        await Supabase.instance.client.auth.signInWithPassword(email: email, password: pass);
+        await auth.signIn(email, pass);
         // Navigation will happen via AuthWrapper
       }
     } catch (e) {

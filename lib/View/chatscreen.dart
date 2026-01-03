@@ -1,11 +1,12 @@
 // lib/View/chatscreen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_list/AI/gemini.dart' as GeminiService;
+import 'package:to_do_list/services/supabase_gemini_service.dart';
 import 'package:to_do_list/database/chatdata.dart';
 import 'package:to_do_list/models/chat_model.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/View/chathistoryscreen.dart'; // Import the new chat history screen
+import 'package:to_do_list/providers.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? initialPrompt;
@@ -53,12 +54,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _isLoading = true;
       });
 
-      final response = await GeminiService.sendChatMessage(ref, messageText);
+      try {
+        // Get current user ID from Riverpod
+        final user = ref.read(currentUserProvider);
+        if (user == null) {
+          throw Exception('User not authenticated');
+        }
 
-      setState(() {
-        _chatData.addMessage(Chat(text: response, isUser: false));
-        _isLoading = false;
-      });
+        final response = await SupabaseGeminiService.sendChatMessage(user.id, messageText);
+
+        setState(() {
+          _chatData.addMessage(Chat(text: response, isUser: false));
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _chatData.addMessage(Chat(text: 'Error: $e', isUser: false));
+          _isLoading = false;
+        });
+      }
     }
   }
 

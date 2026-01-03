@@ -10,9 +10,17 @@ class UserFeedback extends HiveObject {
   @HiveField(1)
   DateTime timestamp;
 
+  @HiveField(2)
+  String? id;
+
+  @HiveField(3)
+  String? userId;
+
   UserFeedback({
     required this.feedback,
     required this.timestamp,
+    this.id,
+    this.userId,
   });
 
   // Factory constructor for creating a UserFeedback from a Hive List
@@ -20,6 +28,8 @@ class UserFeedback extends HiveObject {
     return UserFeedback(
       feedback: list[0] as String,
       timestamp: list[1] as DateTime,
+      id: list.length > 2 ? list[2] as String? : null,
+      userId: list.length > 3 ? list[3] as String? : null,
     );
   }
 
@@ -28,6 +38,8 @@ class UserFeedback extends HiveObject {
     return [
       feedback,
       timestamp,
+      id,
+      userId,
     ];
   }
 }

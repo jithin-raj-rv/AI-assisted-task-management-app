@@ -53,7 +53,7 @@ class _TododetailspageState extends ConsumerState<Tododetailspage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Due Date: ${todo.dueDate != null ? DateFormat('MMM dd, yyyy').format(todo.dueDate) : 'Not set'}',
+              'Due Date: ${todo.dueDate != null ? DateFormat('MMM dd, yyyy').format(todo.dueDate!) : 'Not set'}',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),

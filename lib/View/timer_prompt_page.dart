@@ -2,12 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
-import '../View Model/timer_prompt_vm.dart';
+import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
 import 'package:to_do_list/main.dart'; // To access db
 import 'package:to_do_list/util/timer_prompt_tile.dart';
-import 'package:to_do_list/Timer prompt send/timerpromptsender.dart'; // Import for scheduling
 import 'package:to_do_list/providers.dart'; // For currentUserProvider
 
 class TimerPromptPage extends ConsumerStatefulWidget {
@@ -86,15 +85,14 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
   }
 
   void _deletePrompt(TimerPrompt prompt) async {
-    cancelTimerPrompt(prompt.id);
-    db.timerPrompts.remove(prompt);
-    db.updatedata();
-    setState(() {});
+    await ref.read(timerPromptViewModelProvider.notifier).deletePrompt(prompt.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final appTheme = ref.watch(themeProvider);
+    final prompts = ref.watch(timerPromptViewModelProvider).prompts;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appTheme.background,
@@ -102,7 +100,7 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
       ),
       body: Container(
         color: appTheme.background,
-        child: db.timerPrompts.isEmpty
+        child: prompts.isEmpty
             ? Center(
                 child: Text(
                   'No timer prompts scheduled.',
@@ -110,41 +108,22 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
                 ),
               )
             : ListView.builder(
-                itemCount: db.timerPrompts.length,
+                itemCount: prompts.length,
                 itemBuilder: (context, index) {
-                  final prompt = db.timerPrompts[index];
+                  final prompt = prompts[index];
                   return TimerPromptTile(
                     timerPrompt: prompt,
                     onDelete: _deletePrompt,
-                    onEdit: (p) => showTimerPromptDialog(
+                    onEdit: (p) => ref.read(timerPromptViewModelProvider.notifier).showTimerPromptDialog(
                       context: context,
                       existingPrompt: p,
                       onSave: (prompt) async {
                         try {
-                          final userId = ref.read(currentUserProvider)?.id;
-                          if (userId == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User not authenticated')));
-                            return;
-                          }
-                          final idx = db.timerPrompts.indexWhere((t) => t.id == prompt.id);
-                          if (idx >= 0) {
-                            db.timerPrompts[idx] = prompt;
-                          } else {
-                            db.timerPrompts.add(prompt);
-                          }
-                          db.updatedata();
-                          // Schedule with Workmanager
-                          cancelTimerPrompt(prompt.id);
-                          if (prompt.isRecurring) {
-                            scheduleRecurringTimerPrompt(prompt, userId);
-                          } else {
-                            scheduleTimerPrompt(prompt, userId);
-                          }
+                          final vm = ref.read(timerPromptViewModelProvider.notifier);
+                          await vm.savePrompt(prompt);
                         } catch (e) {
                           print('Error saving timer prompt: $e');
-                          // Optionally show a snackbar or dialog to user
                         }
-                        setState(() {});
                       },
                     ),
                   );
@@ -152,28 +131,15 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showTimerPromptDialog(
+        onPressed: () => ref.read(timerPromptViewModelProvider.notifier).showTimerPromptDialog(
           context: context,
           onSave: (prompt) async {
             try {
-              final userId = ref.read(currentUserProvider)?.id;
-              if (userId == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User not authenticated')));
-                return;
-              }
-              db.timerPrompts.add(prompt);
-              db.updatedata();
-              // Schedule with Workmanager
-              if (prompt.isRecurring) {
-                scheduleRecurringTimerPrompt(prompt, userId);
-              } else {
-                scheduleTimerPrompt(prompt, userId);
-              }
+              final vm = ref.read(timerPromptViewModelProvider.notifier);
+              await vm.savePrompt(prompt);
             } catch (e) {
               print('Error saving timer prompt: $e');
-              // Optionally show a snackbar or dialog to user
             }
-            setState(() {});
           },
         ),
         backgroundColor: appTheme.primaryGradient1,

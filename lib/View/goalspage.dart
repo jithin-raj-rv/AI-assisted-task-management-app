@@ -4,8 +4,11 @@ import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/goaldialogbox.dart';
 import 'package:to_do_list/util/goaltile.dart';
 import 'package:to_do_list/models/goal_model.dart';
-import 'package:to_do_list/View Model/goalspagevm.dart';
+import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
+import 'package:to_do_list/util/offline_utils.dart';
+import 'package:to_do_list/sync_providers.dart';
+import 'package:to_do_list/services/connectivity_service.dart';
 
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
@@ -36,11 +39,23 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         initialDescription: goal.description,
         initialTargetDate: goal.targetDate,
         onSave: (name, description, dueDate, isCompleted) {
+          final connectivity = ref.read(connectivityServiceProvider);
+          if (connectivity.currentStatus != ConnectivityStatus.online) {
+            OfflineUtils.showOfflinePopup(context);
+            return;
+          }
           ref.read(goalsPageViewModelProvider.notifier).updateGoal(
-            goal.title,
-            name,
-            description,
-            dueDate ?? goal.targetDate,
+            goal.id!,
+            Goal(
+              title: name,
+              description: description,
+              targetDate: dueDate ?? goal.targetDate,
+              isCompleted: goal.isCompleted,
+              id: goal.id,
+              userId: goal.userId,
+              createdAt: goal.createdAt,
+              updatedAt: goal.updatedAt,
+            ),
           );
           _goalController.clear();
           Navigator.pop(context);
@@ -59,12 +74,19 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       context: context,
       builder: (_) => Goaldialogbox(
         controller: _goalController,
-        onSave: (name, description, dueDate, isCompleted) {
-          ref.read(goalsPageViewModelProvider.notifier).addGoal(
-                name,
-                description,
-                dueDate ?? DateTime.now(),
-              );
+        onSave: (name, description, dueDate, isCompleted) async {
+          final connectivity = ref.read(connectivityServiceProvider);
+          if (connectivity.currentStatus != ConnectivityStatus.online) {
+            OfflineUtils.showOfflinePopup(context);
+            return;
+          }
+          await ref.read(goalsPageViewModelProvider.notifier).addGoal(
+            Goal(
+              title: name,
+              description: description,
+              targetDate: dueDate ?? DateTime.now(),
+            ),
+          );
           _goalController.clear();
           Navigator.pop(context);
         },
@@ -83,23 +105,13 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     final List<Goal> goals = state.goals;
     final appTheme = ref.watch(themeProvider);
 
+    print('[GoalsPage] build: rebuilding with ${goals.length} goals');
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appTheme.background,
         title: Tittlegradient(text: 'My Goals'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            onPressed: () {
-              ref.read(goalsPageViewModelProvider.notifier).undo();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.redo),
-            onPressed: () {
-              ref.read(goalsPageViewModelProvider.notifier).redo();
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.emoji_events),
             onPressed: () {},
@@ -117,10 +129,15 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               itemBuilder: (context, index) {
                 return GoalTile(
                   goal: goals[index],
-                  onDelete: () {
-                    ref
+                  onDelete: () async {
+                    final connectivity = ref.read(connectivityServiceProvider);
+                    if (connectivity.currentStatus != ConnectivityStatus.online) {
+                      OfflineUtils.showOfflinePopup(context);
+                      return;
+                    }
+                    await ref
                         .read(goalsPageViewModelProvider.notifier)
-                        .removeGoal(goals[index].title);
+                        .deleteGoal(goals[index].id!);
                   },
                   onEdit: () => _editGoal(goals[index]),
                 );

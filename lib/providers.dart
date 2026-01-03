@@ -1,102 +1,72 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:to_do_list/models/goal_model.dart';
-import 'package:to_do_list/models/scheduled_notification_model.dart';
-import 'package:to_do_list/models/timer_prompt_model.dart';
-import 'package:to_do_list/models/todo_model.dart';
-import 'package:to_do_list/models/user_feedback_model.dart';
-import 'package:to_do_list/todo_repository.dart';
+import 'package:to_do_list/sync_providers.dart';
+import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
+import 'package:to_do_list/viewmodels/reminder_page_viewmodel.dart';
+import 'package:to_do_list/viewmodels/settings_viewmodel.dart';
+import 'package:to_do_list/services/auth_service.dart';
 
-// Repository Providers
-final todoRepositoryProvider = Provider<TodoRepository>((ref) {
-  return TodoRepository(Hive.box<Todo>('todos'));
-});
+final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
-final goalsRepositoryProvider = Provider<GoalsRepository>((ref) {
-  return GoalsRepository(Hive.box<Goal>('goals'));
-});
 
-final timerPromptsRepositoryProvider = Provider<TimerPromptsRepository>((ref) {
-  return TimerPromptsRepository(Hive.box<TimerPrompt>('timer_prompts'));
-});
-
-final scheduledNotificationsRepositoryProvider =
-    Provider<ScheduledNotificationsRepository>((ref) {
-  return ScheduledNotificationsRepository(
-      Hive.box<ScheduledNotification>('scheduled_notifications'));
-});
-
-final userFeedbackRepositoryProvider = Provider<UserFeedbackRepository>((ref) {
-  return UserFeedbackRepository(Hive.box<UserFeedback>('user_feedback'));
-});
-
-// Stream Providers for reactive data
-final todosProvider = StreamProvider<List<Todo>>((ref) {
-  return ref.watch(todoRepositoryProvider).watchTodos();
-});
-
-final goalsProvider = StreamProvider<List<Goal>>((ref) {
-  return ref.watch(goalsRepositoryProvider).watchGoals();
-});
-
-final timerPromptsProvider = StreamProvider<List<TimerPrompt>>((ref) {
-  return ref.watch(timerPromptsRepositoryProvider).watchTimerPrompts();
-});
-
-final scheduledNotificationsProvider =
-    StreamProvider<List<ScheduledNotification>>((ref) {
-  return ref.watch(scheduledNotificationsRepositoryProvider).watchScheduledNotifications();
-});
-
-final userFeedbackProvider = StreamProvider<List<UserFeedback>>((ref) {
-  return ref.watch(userFeedbackRepositoryProvider).watchUserFeedback();
-});
-
-// Settings Provider (untyped box)
-final settingsProvider = StreamProvider<Map<String, dynamic>>((ref) async* {
-  final box = Hive.box('settings');
-
-  // Ensure defaults are set
-  if (box.get('personality') == null) {
-    await box.put('personality', [
-      "Introvert",
-      "Logical thinker",
-      "Independent",
-      "Problem solver",
-      "Curious learner",
-      "Calm under pressure",
-      "Observant",
-      "Practical mindset"
-    ]);
-  }
-  if (box.get('additional_info') == null) {
-    await box.put('additional_info', [
-      "Enjoys working alone or in small teams",
-      "Learns best by doing projects",
-      "Prefers clear goals over vague plans",
-      "Interested in technology and startups",
-      "Values freedom and flexibility",
-      "Focuses on efficiency and results",
-      "Takes time to open up socially",
-      "Motivated by skill mastery"
-    ]);
-  }
-
-  yield Map<String, dynamic>.from(box.toMap());
-
-  await for (final _ in box.watch()) {
-    yield Map<String, dynamic>.from(box.toMap());
-  }
-});
 
 // Auth Providers
 final authStateProvider = StreamProvider<AuthState>((ref) {
-  return Supabase.instance.client.auth.onAuthStateChange;
+  final auth = ref.read(authServiceProvider);
+  return auth.onAuthStateChange;
 });
 
 final currentUserProvider = Provider<User?>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.asData?.value.session?.user;
+  final auth = ref.read(authServiceProvider);
+  return auth.currentUser;
 });
+
+// Sync Provider - triggers sync when user becomes authenticated
+final dataSyncProvider = FutureProvider<void>((ref) async {
+  final authStateAsync = ref.watch(authStateProvider);
+
+  // Wait for auth state to be available
+  final authState = authStateAsync.asData?.value;
+
+  if (authState?.session?.user != null) {
+    try {
+      final todoSyncService = ref.read(todoSyncServiceProvider);
+      await todoSyncService.syncFromSupabase();
+      print('Initial todo data sync completed successfully');
+
+      final goalSyncService = ref.read(goalSyncServiceProvider);
+      await goalSyncService.syncFromSupabase();
+      print('Initial goal data sync completed successfully');
+
+      final reminderSyncService = ref.read(reminderSyncServiceProvider);
+      await reminderSyncService.syncFromSupabase();
+      print('Initial reminder data sync completed successfully');
+
+      final settingsSyncService = ref.read(settingsSyncServiceProvider);
+      await settingsSyncService.syncFromSupabase();
+      print('Initial settings data sync completed successfully');
+
+      final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
+      await timerPromptSyncService.syncFromSupabase();
+      print('Initial timer prompt data sync completed successfully');
+
+      final personalitySyncService = ref.read(personalitySyncServiceProvider);
+      await personalitySyncService.syncFromSupabase();
+      print('Initial personality data sync completed successfully');
+
+      final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
+      await additionalInfoSyncService.syncFromSupabase();
+      print('Initial additional info data sync completed successfully');
+    } catch (e) {
+      print('Error during initial data sync: $e');
+      // Re-throw to make the FutureProvider error
+      rethrow;
+    }
+  }
+});
+
+// Reminder Page View Model
+final reminderPageViewModelProvider = Provider<ReminderPageViewModel>((ref) => ReminderPageViewModel(ref));
+
+// Settings Page View Model
+final settingsPageViewModelProvider = NotifierProvider<SettingsPageViewModel, SettingsPageState>(() => SettingsPageViewModel());

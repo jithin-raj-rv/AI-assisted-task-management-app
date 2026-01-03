@@ -17,7 +17,7 @@ enum ReminderType {
 @HiveType(typeId: 4)
 class ScheduledNotification extends HiveObject {
   @HiveField(0)
-  int id;
+  String id;
 
   @HiveField(1)
   String title;
@@ -43,6 +43,15 @@ class ScheduledNotification extends HiveObject {
   @HiveField(8)
   String? aiPrompt;
 
+  @HiveField(9)
+  String? userId;
+
+  @HiveField(10)
+  DateTime? createdAt;
+
+  @HiveField(11)
+  DateTime? updatedAt;
+
   ScheduledNotification({
     required this.id,
     required this.title,
@@ -53,11 +62,14 @@ class ScheduledNotification extends HiveObject {
     this.options,
     this.expectedAnswer,
     this.aiPrompt,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory ScheduledNotification.fromHiveList(List<dynamic> list) {
     return ScheduledNotification(
-      id: list[0] as int,
+      id: list[0].toString(),
       title: list[1] as String,
       body: list[2] as String?,
       scheduledDate: list[3] as DateTime,
@@ -66,6 +78,9 @@ class ScheduledNotification extends HiveObject {
       options: list.length > 6 ? (list[6] as List<dynamic>?)?.cast<String>() : null,
       expectedAnswer: list.length > 7 ? list[7] as String? : null,
       aiPrompt: list.length > 8 ? list[8] as String? : null,
+      userId: list.length > 9 ? list[9] as String? : null,
+      createdAt: list.length > 10 ? list[10] as DateTime? : null,
+      updatedAt: list.length > 11 ? list[11] as DateTime? : null,
     );
   }
 
@@ -80,6 +95,9 @@ class ScheduledNotification extends HiveObject {
       options,
       expectedAnswer,
       aiPrompt,
+      userId,
+      createdAt,
+      updatedAt,
     ];
   }
 
@@ -94,6 +112,9 @@ class ScheduledNotification extends HiveObject {
       options: options != null ? List.from(options!) : null,
       expectedAnswer: expectedAnswer,
       aiPrompt: aiPrompt,
+      userId: userId,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 }

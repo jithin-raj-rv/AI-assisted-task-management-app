@@ -1,50 +1,79 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_list/AI/gemini.dart' as GeminiService;
+import 'package:to_do_list/cache/timer_prompt_cache.dart';
+import 'package:to_do_list/services/supabase_gemini_service.dart';
+import 'package:to_do_list/services/timer_prompt_sync_service.dart';
+import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/providers.dart';
 
-/// Executes a timer prompt by sending it to Gemini AI and updating the database.
-/// This function can be called when the scheduled time is reached, either manually or automatically.
-Future<void> executeTimerPrompt(
-  WidgetRef ref,
-  TimerPrompt prompt,
-) async {
-  try {
-    // Call Gemini AI
-    final response = await GeminiService.sendChatMessage(
-      ref, prompt.prompt
-    );
+class TimerPromptState {
+  final List<TimerPrompt> prompts;
 
-    // Update Database with the response history
-    final timestamp = DateFormat('MMM dd, HH:mm').format(DateTime.now());
-    final newEntry = "[$timestamp] $response";
+  const TimerPromptState({this.prompts = const []});
 
-    final repo = ref.read(timerPromptsRepositoryProvider);
-    final existingPrompt = repo.getTimerPrompt(prompt.id);
-    if (existingPrompt != null) {
-      final updatedPrompt = TimerPrompt(
-        id: existingPrompt.id,
-        prompt: existingPrompt.prompt,
-        scheduledTime: existingPrompt.scheduledTime,
-        isRecurring: existingPrompt.isRecurring,
-        weekdays: existingPrompt.weekdays,
-        response: existingPrompt.response != null && existingPrompt.response!.isNotEmpty
-          ? "$newEntry\n\n${existingPrompt.response}"
-          : newEntry,
-      );
-      await repo.updateTimerPrompt(prompt.id, updatedPrompt);
-    }
-  } catch (e) {
-    // Handle error, perhaps log or store error message
-    print('Error executing timer prompt: $e');
+  TimerPromptState copyWith({List<TimerPrompt>? prompts}) {
+    return TimerPromptState(prompts: prompts ?? this.prompts);
   }
 }
 
-/// Shows a timer prompt dialog. This function is self-contained and does not
-/// rely on external widget state. Provide `onSave` to persist a `TimerPrompt`
-/// and `scheduleNotifications` to schedule it.
+class TimerPromptViewModel extends Notifier<TimerPromptState> {
+  final TimerPromptCache _cache = TimerPromptCache();
+  late final TimerPromptSyncService _syncService;
+
+  @override
+  TimerPromptState build() {
+    _syncService = ref.watch(timerPromptSyncServiceProvider);
+    _cache.watchAll().listen((prompts) {
+      state = TimerPromptState(prompts: prompts);
+    });
+    return const TimerPromptState();
+  }
+
+  Future<void> savePrompt(TimerPrompt prompt) async {
+    await _syncService.createTimerPrompt(prompt);
+  }
+
+  Future<void> deletePrompt(String id) async {
+    await _syncService.deleteTimerPrompt(id);
+  }
+
+  Future<void> executePrompt(TimerPrompt prompt) async {
+    try {
+      // Get current user from Riverpod
+      final container = ProviderContainer();
+      final user = container.read(currentUserProvider);
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await SupabaseGeminiService.sendChatMessage(user.id, prompt.prompt);
+      final timestamp = DateTime.now();
+      final newEntry = "[${timestamp.toIso8601String()}] $response";
+      final existing = await _cache.get(prompt.id);
+      if (existing != null) {
+        final updated = TimerPrompt(
+          id: existing.id,
+          prompt: existing.prompt,
+          scheduledTime: existing.scheduledTime,
+          isRecurring: existing.isRecurring,
+          weekdays: existing.weekdays,
+          response: existing.response != null && existing.response!.isNotEmpty
+              ? "$newEntry\n\n"+existing.response!
+              : newEntry,
+          userId: existing.userId,
+          createdAt: existing.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        await _cache.put(updated.id, updated);
+      }
+    } catch (e) {
+      print('Error executing timer prompt: $e');
+    }
+  }
+
+/// Shows a dialog to create/edit a TimerPrompt. `onSave` should persist via ViewModel.
 Future<void> showTimerPromptDialog({
   required BuildContext context,
   TimerPrompt? existingPrompt,
@@ -230,55 +259,68 @@ Future<void> showTimerPromptDialog({
                 final text = promptController.text.trim();
                 if (text.isEmpty) return;
 
-                    if (repeatOption != 'Never') {
-                    if (selectedTime == null) return;
-                    final dt = DateTime(
-                      DateTime.now().year,
-                      DateTime.now().month,
-                      DateTime.now().day,
+                if (repeatOption != 'Never') {
+                  if (selectedTime == null) return;
+                  final dt = DateTime(
+                    DateTime.now().year,
+                    DateTime.now().month,
+                    DateTime.now().day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+
+                  final now = DateTime.now();
+                  final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
+                  final TimerPrompt prompt = TimerPrompt(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    prompt: text,
+                    scheduledTime: dt,
+                    isRecurring: true,
+                    weekdays: repeatOption == 'Weekly' ? selectedWeekdays : null,
+                    userId: userId,
+                    createdAt: now,
+                    updatedAt: now,
+                  );
+
+                  await onSave(prompt);
+                } else {
+                  final List<DateTime> finalTimes = List.from(scheduledDateTimes);
+                  if (finalTimes.isEmpty && selectedDate != null && selectedTime != null) {
+                    finalTimes.add(DateTime(
+                      selectedDate!.year,
+                      selectedDate!.month,
+                      selectedDate!.day,
                       selectedTime!.hour,
                       selectedTime!.minute,
-                    );
-
-                    final TimerPrompt prompt = TimerPrompt(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      prompt: text,
-                      scheduledTime: dt,
-                      isRecurring: true,
-                      weekdays: repeatOption == 'Weekly' ? selectedWeekdays : null,
-                    );
-
-                    await onSave(prompt);
-                  } else {
-                    final List<DateTime> finalTimes = List.from(scheduledDateTimes);
-                    if (finalTimes.isEmpty && selectedDate != null && selectedTime != null) {
-                      finalTimes.add(DateTime(
-                        selectedDate!.year,
-                        selectedDate!.month,
-                        selectedDate!.day,
-                        selectedTime!.hour,
-                        selectedTime!.minute,
-                      ));
-                    }
-
-                    for (int i = 0; i < finalTimes.length; i++) {
-                      final p = TimerPrompt(
-                        id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
-                        prompt: text,
-                        scheduledTime: finalTimes[i],
-                        isRecurring: false,
-                      );
-                      await onSave(p);
-                    }
+                    ));
                   }
 
-                  Navigator.pop(context);
-                },
-                child: const Text('Save', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
+                  for (int i = 0; i < finalTimes.length; i++) {
+                    final now = DateTime.now();
+                    final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
+                    final p = TimerPrompt(
+                      id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
+                      prompt: text,
+                      scheduledTime: finalTimes[i],
+                      isRecurring: false,
+                      userId: userId,
+                      createdAt: now,
+                      updatedAt: now,
+                    );
+                    await onSave(p);
+                  }
+                }
+
+                Navigator.pop(context);
+              },
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      });
+    },
+  );
+}
+}
+
+final timerPromptViewModelProvider = NotifierProvider<TimerPromptViewModel, TimerPromptState>(() => TimerPromptViewModel());

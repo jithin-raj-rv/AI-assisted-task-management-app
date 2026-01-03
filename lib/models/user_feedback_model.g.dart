@@ -19,17 +19,23 @@ class UserFeedbackAdapter extends TypeAdapter<UserFeedback> {
     return UserFeedback(
       feedback: fields[0] as String,
       timestamp: fields[1] as DateTime,
+      id: fields[2] as String?,
+      userId: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserFeedback obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.feedback)
       ..writeByte(1)
-      ..write(obj.timestamp);
+      ..write(obj.timestamp)
+      ..writeByte(2)
+      ..write(obj.id)
+      ..writeByte(3)
+      ..write(obj.userId);
   }
 
   @override

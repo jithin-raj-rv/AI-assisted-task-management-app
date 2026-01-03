@@ -139,7 +139,7 @@ class LocalNotificationService {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
-      notification.id,
+      int.parse(notification.id),
       notification.title,
       notification.body,
       // Ensure we interpret the scheduledDate as local wall-clock time

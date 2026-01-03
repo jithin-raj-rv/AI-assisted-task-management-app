@@ -24,13 +24,16 @@ class TimerPromptAdapter extends TypeAdapter<TimerPrompt> {
       weekdays: (fields[4] as List?)?.cast<int>(),
       id: fields[5] as String,
       sent: fields[6] as bool,
+      userId: fields[7] as String?,
+      createdAt: fields[8] as DateTime?,
+      updatedAt: fields[9] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TimerPrompt obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.prompt)
       ..writeByte(1)
@@ -44,7 +47,13 @@ class TimerPromptAdapter extends TypeAdapter<TimerPrompt> {
       ..writeByte(5)
       ..write(obj.id)
       ..writeByte(6)
-      ..write(obj.sent);
+      ..write(obj.sent)
+      ..writeByte(7)
+      ..write(obj.userId)
+      ..writeByte(8)
+      ..write(obj.createdAt)
+      ..writeByte(9)
+      ..write(obj.updatedAt);
   }
 
   @override

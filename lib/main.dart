@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:to_do_list/Notification/local_notification_service.dart';
 import 'package:to_do_list/View/homepage.dart';
 import 'package:to_do_list/View/login_page.dart';
-import 'package:to_do_list/database/database.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import the new scheduled notification model
@@ -14,29 +12,27 @@ import 'package:to_do_list/models/timer_prompt_model.dart'; // Import the new ti
 import 'package:to_do_list/models/todo_model.dart';
 import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
-import 'package:to_do_list/View Model/timer_prompt_vm.dart'; // Import the new function
-import 'package:to_do_list/Timer prompt send/timerpromptsender.dart'; // Import timer prompt sender
+import 'package:to_do_list/models/personality_trait_model.dart';
+import 'package:to_do_list/models/additional_info_model.dart';
+import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
+import 'package:to_do_list/cache/timer_prompt_cache.dart';
 import 'package:to_do_list/providers.dart'; // Import providers
+import 'package:to_do_list/sync_providers.dart'; // Import sync providers
 import 'package:to_do_list/config/supabase_config.dart';
-import 'package:workmanager/workmanager.dart';
 
 final localNotificationService = LocalNotificationService();
-final Localdata db = Localdata(localNotificationService); // Initialize db with localNotificationService
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void onNotificationResponse(String? payload) {
+Future<void> onNotificationResponse(String? payload) async {
   print("Notification response received with payload: $payload");
   if (payload != null && payload.startsWith('timer_prompt_')) {
     final parts = payload.split('_');
     if (parts.length >= 3) {
       final promptId = parts[2];
       print("Extracted promptId from notification: $promptId");
-      // Find the prompt text from the database
-      final prompt = db.timerPrompts.firstWhere(
-        (p) => p.id == promptId,
-        orElse: () => TimerPrompt(id: '', prompt: '', scheduledTime: DateTime.now()),
-      );
+      // Find the prompt text from the local cache
+      final prompt = await TimerPromptCache().get(promptId) ?? TimerPrompt(id: '', prompt: '', scheduledTime: DateTime.now());
 
       if (prompt.prompt.isNotEmpty && navigatorKey.currentContext != null) {
         print("Showing timer prompt dialog for prompt: ${prompt.prompt}");
@@ -128,10 +124,22 @@ void main() async {
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(GoalAdapter());
   Hive.registerAdapter(ScheduledNotificationAdapter());
+  Hive.registerAdapter(ReminderTypeAdapter());
   Hive.registerAdapter(TimerPromptAdapter());
   Hive.registerAdapter(UserFeedbackAdapter());
   Hive.registerAdapter(QuestionAdapter());
   Hive.registerAdapter(QuestionTypeAdapter());
+  Hive.registerAdapter(PersonalityTraitAdapter());
+  Hive.registerAdapter(AdditionalInfoAdapter());
+
+  // Delete existing typed boxes if they exist to avoid deserialization issues
+  if (await Hive.boxExists('todos')) await Hive.deleteBoxFromDisk('todos');
+  if (await Hive.boxExists('goals')) await Hive.deleteBoxFromDisk('goals');
+  if (await Hive.boxExists('timer_prompts')) await Hive.deleteBoxFromDisk('timer_prompts');
+  if (await Hive.boxExists('scheduled_notifications')) await Hive.deleteBoxFromDisk('scheduled_notifications');
+  if (await Hive.boxExists('user_feedback')) await Hive.deleteBoxFromDisk('user_feedback');
+  if (await Hive.boxExists('personality_traits')) await Hive.deleteBoxFromDisk('personality_traits');
+  if (await Hive.boxExists('additional_info_items')) await Hive.deleteBoxFromDisk('additional_info_items');
 
   // Open typed boxes
   await Hive.openBox<Todo>('todos');
@@ -139,6 +147,8 @@ void main() async {
   await Hive.openBox<TimerPrompt>('timer_prompts');
   await Hive.openBox<ScheduledNotification>('scheduled_notifications');
   await Hive.openBox<UserFeedback>('user_feedback');
+  await Hive.openBox<PersonalityTrait>('personality_traits');
+  await Hive.openBox<AdditionalInfo>('additional_info_items');
   await Hive.openBox('settings');
 
   // Keep old box for migration
@@ -149,9 +159,6 @@ void main() async {
   // Migrate data from old box to typed boxes
   await migrateData();
 
-  // Load Localdata lists from the legacy untyped box so global `db` has current data
-  db.loaddata();
-
   // Reschedule notifications
   await rescheduleNotifications();
 
@@ -159,19 +166,22 @@ void main() async {
   // Pass the handler to the init method (ensure your LocalNotificationService supports this)
   await localNotificationService.init(onNotificationResponse: onNotificationResponse);
 
-  await Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: true, // set false in release
-  );
-
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
 
-  // After Supabase is initialized, pull user data and set up realtime subscriptions
-  await db.syncFromSupabase();
-  db.setupRealtimeSubscriptions();
+  // Listen to auth state changes to (re)attach realtime subscriptions reliably
+  Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+    final user = event.session?.user;
+    if (user != null) {
+      // Realtime setup will be handled by AuthWrapper via providers
+      print('[AuthListener] User signed in');
+    } else {
+      // Clear realtime if needed, but DataSyncService handles it
+      print('[AuthListener] User signed out');
+    }
+  });
 
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -186,6 +196,32 @@ class AuthWrapper extends ConsumerWidget {
     return authState.when(
       data: (data) {
         if (data.session != null) {
+      // Set up realtime subscriptions after authentication
+      final todoSyncService = ref.read(todoSyncServiceProvider);
+      todoSyncService.setupRealtimeSubscriptions();
+      print('todo realtime subscriptions set');
+
+      final goalSyncService = ref.read(goalSyncServiceProvider);
+      goalSyncService.setupRealtimeSubscriptions();
+      print('goal realtime subscriptions set');
+
+      final reminderSyncService = ref.read(reminderSyncServiceProvider);
+      reminderSyncService.setupRealtimeSubscriptions();
+      print('reminder realtime subscriptions set');
+
+      final personalitySyncService = ref.read(personalitySyncServiceProvider);
+      personalitySyncService.setupRealtimeSubscriptions();
+      print('personality realtime subscriptions set');
+
+      final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
+      additionalInfoSyncService.setupRealtimeSubscriptions();
+      print('additional info realtime subscriptions set');
+
+      final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
+      timerPromptSyncService.setupRealtimeSubscriptions();
+      print('timer prompt realtime subscriptions set');
+          // Watch the data sync provider to trigger sync when authenticated
+          ref.watch(dataSyncProvider);
           return const Homepage();
         } else {
           return const LoginPage();
@@ -273,12 +309,17 @@ class _TimerPromptExecutionDialogState extends ConsumerState<TimerPromptExecutio
 
   Future<void> _executePrompt() async {
     try {
-      // Use the new executeTimerPrompt function
-      await executeTimerPrompt(ref, widget.prompt);
+      // Execute via the TimerPrompt ViewModel
+      await ref.read(timerPromptViewModelProvider.notifier).executePrompt(widget.prompt);
 
-      // Get the updated response from the prompt
-      final repo = ref.read(timerPromptsRepositoryProvider);
-      final p = repo.getTimerPrompt(widget.prompt.id);
+      // Get the updated response from the prompt (read from ViewModel state)
+      final promptsState = ref.read(timerPromptViewModelProvider);
+      TimerPrompt? p;
+      try {
+        p = promptsState.prompts.firstWhere((e) => e.id == widget.prompt.id);
+      } catch (err) {
+        p = null;
+      }
       if (p != null) {
         _response = p.response?.split('\n\n').first ?? 'No response';
       } else {

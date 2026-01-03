@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_list/AI/gemini.dart' as GeminiService;
-import 'package:google_generative_ai/google_generative_ai.dart'; // Import for Content
+import 'package:to_do_list/services/supabase_gemini_service.dart';
 import 'package:to_do_list/database/chatdata.dart';
 import 'package:to_do_list/models/chat_model.dart';
+import 'package:to_do_list/providers.dart';
 
 class GeminiDialog extends ConsumerStatefulWidget {
   const GeminiDialog({super.key});
@@ -36,23 +36,25 @@ class _GeminiDialogState extends ConsumerState<GeminiDialog> {
         _isLoading = true;
       });
 
-      // Build an override history from the current session but exclude the
-      // trailing user message (we'll send it separately to the model).
-      final messages = _chatData.currentChatMessages;
-      final List<Content> dialogChatHistory = [];
-      for (int i = 0; i < messages.length - 1; i++) {
-        final m = messages[i];
-        dialogChatHistory.add(Content(m.isUser ? 'user' : 'model', [TextPart(m.text)]));
+      try {
+        // Get current user ID from Riverpod
+        final user = ref.read(currentUserProvider);
+        if (user == null) {
+          throw Exception('User not authenticated');
+        }
+
+        final response = await SupabaseGeminiService.sendChatMessage(
+          user.id,
+          messageText,
+        );
+
+        // Persist assistant reply and update UI
+        _chatData.addMessage(Chat(text: response, isUser: false));
+      } catch (e) {
+        // Show error message to user
+        _chatData.addMessage(Chat(text: 'Error: $e', isUser: false));
       }
 
-      final response = await GeminiService.sendChatMessage(
-        ref,
-        messageText,
-        chatHistoryOverride: dialogChatHistory,
-      );
-
-      // Persist assistant reply and update UI
-      _chatData.addMessage(Chat(text: response, isUser: false));
       setState(() {
         _isLoading = false;
       });

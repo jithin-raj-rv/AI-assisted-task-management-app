@@ -20,7 +20,8 @@ class Todotile extends StatelessWidget {
   final VoidCallback onEdit;
   final Todo todo;
 
-  String _formatTimeRemaining(DateTime dueDate) {
+  String _formatTimeRemaining(DateTime? dueDate) {
+    if (dueDate == null) return 'No due date';
     final now = DateTime.now();
     final difference = dueDate.difference(now);
 

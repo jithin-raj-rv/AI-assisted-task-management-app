@@ -25,6 +25,15 @@ class TimerPrompt extends HiveObject {
   @HiveField(6)
   bool sent;
 
+  @HiveField(7)
+  String? userId;
+
+  @HiveField(8)
+  DateTime? createdAt;
+
+  @HiveField(9)
+  DateTime? updatedAt;
+
   TimerPrompt({
     required this.prompt,
     required this.scheduledTime,
@@ -33,6 +42,9 @@ class TimerPrompt extends HiveObject {
     this.weekdays,
     required this.id,
     this.sent = false,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory TimerPrompt.fromHiveList(List<dynamic> list) {
@@ -44,10 +56,13 @@ class TimerPrompt extends HiveObject {
       weekdays: list.length > 4 ? (list[4] as List<dynamic>?)?.cast<int>() : null,
       id: list.length > 5 ? list[5] as String : DateTime.now().millisecondsSinceEpoch.toString(),
       sent: list.length > 6 ? list[6] as bool : false,
+      userId: list.length > 7 ? list[7] as String? : null,
+      createdAt: list.length > 8 ? list[8] as DateTime? : null,
+      updatedAt: list.length > 9 ? list[9] as DateTime? : null,
     );
   }
 
   List<dynamic> toHiveList() {
-    return [prompt, scheduledTime, response, isRecurring, weekdays, id, sent];
+    return [prompt, scheduledTime, response, isRecurring, weekdays, id, sent, userId, createdAt, updatedAt];
   }
 }

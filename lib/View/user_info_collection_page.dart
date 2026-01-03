@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import flutter_riverpod
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
-import 'package:to_do_list/AI/gemini.dart'; // Import gemini.dart // Assuming theme is used for styling
+import 'package:to_do_list/services/supabase_gemini_service.dart'; // Import supabase gemini service
+import 'package:to_do_list/providers.dart'; // Import providers
 
 class UserInfoCollectionPage extends ConsumerStatefulWidget {
   const UserInfoCollectionPage({Key? key}) : super(key: key);
@@ -146,7 +147,11 @@ String _generateInitialPrompt() {
                   print('User Responses: $_userResponses'); // For debugging
 
                   final String initialPrompt = _generateInitialPrompt();
-                  final String geminiResponse = await sendChatMessage(ref, initialPrompt);
+                  final user = ref.read(currentUserProvider);
+                  if (user == null) {
+                    throw Exception('User not authenticated');
+                  }
+                  final String geminiResponse = await SupabaseGeminiService.sendChatMessage(user.id, initialPrompt);
                   print('Gemini Initial Response: $geminiResponse');
 
                   Navigator.pushReplacementNamed(context, '/home'); // Assuming '/home' is your main page route

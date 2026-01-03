@@ -21,6 +21,15 @@ class Goal extends HiveObject {
   @HiveField(4)
   bool isCompleted;
 
+  @HiveField(5)
+  String? userId;
+
+  @HiveField(6)
+  DateTime? createdAt;
+
+  @HiveField(7)
+  DateTime? updatedAt;
+
 
 
   Goal({
@@ -29,6 +38,9 @@ class Goal extends HiveObject {
     required this.description,
     required this.targetDate,
     this.isCompleted = false,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
   });
 
   Goal clone() {
@@ -38,6 +50,9 @@ class Goal extends HiveObject {
       description: description,
       targetDate: targetDate,
       isCompleted: isCompleted,
+      userId: userId,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
     // Constructor to create a Goal from the existing List<dynamic> format
@@ -48,12 +63,15 @@ class Goal extends HiveObject {
       description: data[1] as String,
       targetDate: data[2] as DateTime,
       isCompleted: data[3] as bool,
+      userId: data.length > 5 ? data[5] as String? : null,
+      createdAt: data.length > 6 ? data[6] as DateTime? : null,
+      updatedAt: data.length > 7 ? data[7] as DateTime? : null,
     );
   }
 
   // Method to convert a Goal object back to the List<dynamic> format for Hive storage
   List<dynamic> toHiveList() {
-    return [title, description, targetDate, isCompleted, id];
+    return [title, description, targetDate, isCompleted, id, userId, createdAt, updatedAt];
   }
 
   @override

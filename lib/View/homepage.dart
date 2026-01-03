@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_list/View%20Model/homepagevm.dart';
 import 'package:to_do_list/View/chatscreen.dart';
 import 'package:to_do_list/View/goalspage.dart';
 import 'package:to_do_list/View/settingspage.dart';
 import 'package:to_do_list/View/reminderpage.dart';
 import 'package:to_do_list/View/timer_prompt_page.dart';
-import 'package:to_do_list/View/todobody.dart';
+import 'package:to_do_list/View/todopage.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/gemini_dialog.dart';
 import 'package:to_do_list/util/icongradient.dart';
 import 'package:to_do_list/util/tododialogbox.dart';
 import 'package:to_do_list/models/todo_model.dart';
-import 'package:to_do_list/providers.dart';
+import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
 
 
 class Homepage extends ConsumerStatefulWidget {
@@ -51,6 +50,23 @@ class _HomepageState extends ConsumerState<Homepage> {
     );
   }
 
+  String _getTitleForIndex(int index) {
+    switch (index) {
+      case 0: return 'My To-Do';
+      case 1: return 'My Goals';
+      case 2: return 'Reminders';
+      case 3: return 'Timer Prompts';
+      case 4: return 'Settings';
+      case 5: return 'Chat';
+      default: return '';
+    }
+  }
+
+  List<Widget> _getActionsForIndex(int index) {
+    // Actions can be added per tab if needed
+    return [];
+  }
+
 void _createNewTask() {
   _textController.clear();
 
@@ -59,18 +75,14 @@ void _createNewTask() {
     builder: (context) {
       return TodoDialogbox(
         controller: _textController,
-        onSave: (name, description, dueDate, isImportant, isUrgent) {
-          final repo = ref.read(todoRepositoryProvider);
-          final id = DateTime.now().millisecondsSinceEpoch.toString();
-          final todo = Todo(
-            id: id,
+        onSave: (name, description, dueDate, isImportant, isUrgent) async {
+          await ref.read(todoViewModelProvider.notifier).createTodo(
             taskName: name,
             importance: isImportant ? "IMPORTANT" : "NOT IMPORTANT",
             urgency: isUrgent ? "URGENT" : "NOT URGENT",
             description: description,
-            dueDate: dueDate!,
+            dueDate: dueDate ?? DateTime.now().add(const Duration(days: 1)),
           );
-          repo.addTodo(todo);
           Navigator.of(context).pop();
         },
         onCancel: () => Navigator.of(context).pop(),
@@ -94,15 +106,16 @@ void _editTask(Todo todo) {
         initialUrgency: isUrgent,
         initialDescription: todo.description, // Pass existing description
         initialDueDate: todo.dueDate,       // Pass existing due date
-        onSave: (name, description, dueDate, isImportant, isUrgent) {
-          final repo = ref.read(todoRepositoryProvider);
-          final updatedTodo = todo.clone()
-            ..taskName = name
-            ..importance = isImportant ? "IMPORTANT" : "NOT IMPORTANT"
-            ..urgency = isUrgent ? "URGENT" : "NOT URGENT"
-            ..description = description
-            ..dueDate = dueDate!;
-          repo.updateTodo(todo.id!, updatedTodo);
+        onSave: (name, description, dueDate, isImportant, isUrgent) async {
+          final updatedTodo = todo.copyWith(
+            taskName: name,
+            importance: isImportant ? "IMPORTANT" : "NOT IMPORTANT",
+            urgency: isUrgent ? "URGENT" : "NOT URGENT",
+            description: description,
+            dueDate: dueDate ?? todo.dueDate,
+            updatedAt: DateTime.now(),
+          );
+          await ref.read(todoViewModelProvider.notifier).updateTodo(updatedTodo);
           Navigator.of(context).pop();
         },
         onCancel: () => Navigator.of(context).pop(),
@@ -119,22 +132,7 @@ void _editTask(Todo todo) {
       appBar: AppBar(
         backgroundColor: appTheme.background,
         elevation: 0,
-        actions: [
-          if (_selectedIndex == 0) ...[
-            IconButton(
-              icon: const Icon(Icons.undo),
-              onPressed: () {
-                ref.read(homePageViewModelProvider).undo();
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.redo),
-              onPressed: () {
-                ref.read(homePageViewModelProvider).redo();
-              },
-            ),
-          ],
-        ],
+        actions: _getActionsForIndex(_selectedIndex),
       ),
       body: PageView(
         controller: _pageController,
@@ -144,7 +142,7 @@ void _editTask(Todo todo) {
           });
         },
         children: [
-          TodoBody(onEditTask: _editTask),
+          TodoPage(showAppBar: true, showFAB: true),
           const GoalsPage(),
           const ReminderPage(),
           const TimerPromptPage(),
@@ -152,32 +150,25 @@ void _editTask(Todo todo) {
           const ChatScreen(),
         ],
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          const SizedBox(width: 10),
-          Visibility(
-            visible: _selectedIndex != 5,
-            child: FloatingActionButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const GeminiDialog(),
-                );
-              },
-              child: const Icon(Icons.smart_toy),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Visibility(
-            visible: _selectedIndex == 0,
-            child: FloatingActionButton(
-              onPressed: _createNewTask,
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ],
-      ),
+      // floatingActionButton: 
+      //    Row(
+      //     mainAxisAlignment: MainAxisAlignment.end,
+      //     children: [
+      //       const SizedBox(width: 10),
+      //       Visibility(
+      //         visible: _selectedIndex != 5,
+      //         child: FloatingActionButton(
+      //           onPressed: () {
+      //             showDialog(
+      //               context: context,
+      //               builder: (context) => const GeminiDialog(),
+      //             );
+      //           },
+      //           child: const Icon(Icons.smart_toy),
+      //         ),
+      //       ),
+      //     ],
+      // ),
       bottomNavigationBar: BottomNavigationBar(
         enableFeedback: true,
         showUnselectedLabels: true,

@@ -17,7 +17,7 @@ class ScheduledNotificationAdapter extends TypeAdapter<ScheduledNotification> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ScheduledNotification(
-      id: fields[0] as int,
+      id: fields[0] as String,
       title: fields[1] as String,
       body: fields[2] as String?,
       scheduledDate: fields[3] as DateTime,
@@ -26,13 +26,16 @@ class ScheduledNotificationAdapter extends TypeAdapter<ScheduledNotification> {
       options: (fields[6] as List?)?.cast<String>(),
       expectedAnswer: fields[7] as String?,
       aiPrompt: fields[8] as String?,
+      userId: fields[9] as String?,
+      createdAt: fields[10] as DateTime?,
+      updatedAt: fields[11] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ScheduledNotification obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +53,13 @@ class ScheduledNotificationAdapter extends TypeAdapter<ScheduledNotification> {
       ..writeByte(7)
       ..write(obj.expectedAnswer)
       ..writeByte(8)
-      ..write(obj.aiPrompt);
+      ..write(obj.aiPrompt)
+      ..writeByte(9)
+      ..write(obj.userId)
+      ..writeByte(10)
+      ..write(obj.createdAt)
+      ..writeByte(11)
+      ..write(obj.updatedAt);
   }
 
   @override

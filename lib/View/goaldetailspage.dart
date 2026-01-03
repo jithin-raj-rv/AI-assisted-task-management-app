@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:to_do_list/View%20Model/goalspagevm.dart';
 import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/goaldialogbox.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
+import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 
 class GoalDetailsPage extends ConsumerStatefulWidget {
   final Goal goal;
@@ -39,11 +39,15 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
         initialDescription: widget.goal.description,
         initialTargetDate: widget.goal.targetDate,
         onSave: (name, description, dueDate, iscompleted) {
+          final updatedGoal = Goal(
+            title: name,
+            description: description,
+            targetDate: dueDate!,
+            isCompleted: widget.goal.isCompleted,
+          );
           ref.read(goalsPageViewModelProvider.notifier).updateGoal(
                 widget.goal.title,
-                name,
-                description,
-                dueDate!,
+                updatedGoal,
               );
           _goalController.clear();
           Navigator.pop(context);

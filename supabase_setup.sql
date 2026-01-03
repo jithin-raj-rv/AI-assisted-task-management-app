@@ -54,7 +54,51 @@ CREATE TABLE user_feedback (
   timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Settings table (for personality, additional_info)
+-- User Profiles table
+CREATE TABLE user_profiles (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Personality Traits table
+CREATE TABLE personality_traits (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  trait TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Additional Information table
+CREATE TABLE additional_info (
+  id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  info TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Reminders table
+CREATE TABLE reminders (
+  id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  scheduled_date TIMESTAMPTZ NOT NULL,
+  payload TEXT,
+  reminder_type TEXT,
+  options JSONB,
+  expected_answer TEXT,
+  ai_prompt TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Settings table (for other settings)
 CREATE TABLE user_settings (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -70,6 +114,10 @@ ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE timer_prompts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE personality_traits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE additional_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
@@ -95,6 +143,29 @@ CREATE POLICY "Users can delete their own timer prompts" ON timer_prompts FOR DE
 CREATE POLICY "Users can view their own feedback" ON user_feedback FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own feedback" ON user_feedback FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- User Profiles
+CREATE POLICY "Users can view their own profile" ON user_profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own profile" ON user_profiles FOR UPDATE USING (auth.uid() = user_id);
+
+-- Personality Traits
+CREATE POLICY "Users can view their own personality traits" ON personality_traits FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own personality traits" ON personality_traits FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own personality traits" ON personality_traits FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own personality traits" ON personality_traits FOR DELETE USING (auth.uid() = user_id);
+
+-- Additional Information
+CREATE POLICY "Users can view their own additional info" ON additional_info FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own additional info" ON additional_info FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own additional info" ON additional_info FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own additional info" ON additional_info FOR DELETE USING (auth.uid() = user_id);
+
+-- Reminders
+CREATE POLICY "Users can view their own reminders" ON reminders FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own reminders" ON reminders FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own reminders" ON reminders FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own reminders" ON reminders FOR DELETE USING (auth.uid() = user_id);
+
 -- User Settings
 CREATE POLICY "Users can view their own settings" ON user_settings FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own settings" ON user_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -114,4 +185,8 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_todos_updated_at BEFORE UPDATE ON todos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_goals_updated_at BEFORE UPDATE ON goals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_timer_prompts_updated_at BEFORE UPDATE ON timer_prompts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_personality_traits_updated_at BEFORE UPDATE ON personality_traits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_additional_info_updated_at BEFORE UPDATE ON additional_info FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_reminders_updated_at BEFORE UPDATE ON reminders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_settings_updated_at BEFORE UPDATE ON user_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
