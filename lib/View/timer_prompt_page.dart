@@ -120,9 +120,9 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
                       onSave: (prompt) async {
                         try {
                           final vm = ref.read(timerPromptViewModelProvider.notifier);
-                          await vm.savePrompt(prompt);
+                          await vm.updatePrompt(p.id, prompt);
                         } catch (e) {
-                          print('Error saving timer prompt: $e');
+                          print('Error updating timer prompt: $e');
                         }
                       },
                     ),

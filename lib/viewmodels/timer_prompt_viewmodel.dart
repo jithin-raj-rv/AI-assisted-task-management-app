@@ -35,6 +35,10 @@ class TimerPromptViewModel extends Notifier<TimerPromptState> {
     await _syncService.createTimerPrompt(prompt);
   }
 
+  Future<void> updatePrompt(String id, TimerPrompt prompt) async {
+    await _syncService.updateTimerPrompt(id, prompt);
+  }
+
   Future<void> deletePrompt(String id) async {
     await _syncService.deleteTimerPrompt(id);
   }
@@ -272,13 +276,13 @@ Future<void> showTimerPromptDialog({
                   final now = DateTime.now();
                   final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
                   final TimerPrompt prompt = TimerPrompt(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    id: existingPrompt?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
                     prompt: text,
                     scheduledTime: dt,
                     isRecurring: true,
                     weekdays: repeatOption == 'Weekly' ? selectedWeekdays : null,
                     userId: userId,
-                    createdAt: now,
+                    createdAt: existingPrompt?.createdAt ?? now,
                     updatedAt: now,
                   );
 
@@ -295,19 +299,36 @@ Future<void> showTimerPromptDialog({
                     ));
                   }
 
-                  for (int i = 0; i < finalTimes.length; i++) {
+                  if (existingPrompt != null) {
+                    // Editing existing prompt
                     final now = DateTime.now();
                     final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
                     final p = TimerPrompt(
-                      id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
+                      id: existingPrompt.id,
                       prompt: text,
-                      scheduledTime: finalTimes[i],
+                      scheduledTime: finalTimes[0], // Use the first (and should be only) time
                       isRecurring: false,
                       userId: userId,
-                      createdAt: now,
+                      createdAt: existingPrompt.createdAt,
                       updatedAt: now,
                     );
                     await onSave(p);
+                  } else {
+                    // Creating new prompts
+                    for (int i = 0; i < finalTimes.length; i++) {
+                      final now = DateTime.now();
+                      final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
+                      final p = TimerPrompt(
+                        id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
+                        prompt: text,
+                        scheduledTime: finalTimes[i],
+                        isRecurring: false,
+                        userId: userId,
+                        createdAt: now,
+                        updatedAt: now,
+                      );
+                      await onSave(p);
+                    }
                   }
                 }
 
