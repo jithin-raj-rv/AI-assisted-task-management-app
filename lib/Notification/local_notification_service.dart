@@ -3,6 +3,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import for initializing timezone data
+import 'dart:convert';
 
 class LocalNotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -10,6 +11,25 @@ class LocalNotificationService {
 
   final BehaviorSubject<String?> onNotificationClick = BehaviorSubject();
   void Function(String?)? _onNotificationResponse;
+
+  /// Convert a string ID to a valid 32-bit signed integer
+  /// If the ID is too large, hash it to fit within the 32-bit range
+  int _convertIdTo32Bit(String id) {
+    try {
+      final parsedId = int.parse(id);
+      // Check if it's within 32-bit signed integer range
+      if (parsedId >= -2147483648 && parsedId <= 2147483647) {
+        return parsedId;
+      }
+      // If out of range, hash it and use modulo to fit within range
+      final hash = id.hashCode;
+      return hash.toSigned(32);
+    } catch (e) {
+      // If parsing fails, hash the string ID and use modulo
+      final hash = id.hashCode;
+      return hash.toSigned(32);
+    }
+  }
 
   Future<void> init({void Function(String?)? onNotificationResponse}) async {
     tz.initializeTimeZones(); // Initialize timezone data
@@ -139,7 +159,7 @@ class LocalNotificationService {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
-      int.parse(notification.id),
+      _convertIdTo32Bit(notification.id),
       notification.title,
       notification.body,
       // Ensure we interpret the scheduledDate as local wall-clock time
@@ -163,8 +183,15 @@ class LocalNotificationService {
   Future<void> rescheduleAllNotifications(
       List<ScheduledNotification> notifications) async {
     await cancelAllNotifications();
+    final now = DateTime.now();
+    
     for (var notification in notifications) {
-      await showScheduledNotification(notification: notification);
+      // Only reschedule notifications that are scheduled for the future
+      if (notification.scheduledDate.isAfter(now)) {
+        await showScheduledNotification(notification: notification);
+      } else {
+        print('Skipping past notification: ${notification.id} scheduled for ${notification.scheduledDate}');
+      }
     }
   }
 

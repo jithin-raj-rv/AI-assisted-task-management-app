@@ -23,8 +23,10 @@ class TodoViewModel extends Notifier<TodoState> {
   TodoState build() {
     _syncService = ref.watch(todoSyncServiceProvider);
     _cache.watchAll().listen((todos) {
+      print('[TodoViewModel] Cache updated with ${todos.length} todos: ${todos.map((t) => t.id).toList()}');
       state = TodoState(todos: todos);
     });
+    print('[TodoViewModel] Built TodoViewModel');
     return TodoState(todos: []);
   }
 

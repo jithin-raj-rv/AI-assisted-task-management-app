@@ -18,6 +18,7 @@ import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
 import 'package:to_do_list/providers.dart'; // Import providers
 import 'package:to_do_list/sync_providers.dart'; // Import sync providers
+import 'package:to_do_list/services/connectivity_service.dart'; // Import connectivity service
 import 'package:to_do_list/config/supabase_config.dart';
 
 final localNotificationService = LocalNotificationService();
@@ -132,14 +133,7 @@ void main() async {
   Hive.registerAdapter(PersonalityTraitAdapter());
   Hive.registerAdapter(AdditionalInfoAdapter());
 
-  // Delete existing typed boxes if they exist to avoid deserialization issues
-  if (await Hive.boxExists('todos')) await Hive.deleteBoxFromDisk('todos');
-  if (await Hive.boxExists('goals')) await Hive.deleteBoxFromDisk('goals');
-  if (await Hive.boxExists('timer_prompts')) await Hive.deleteBoxFromDisk('timer_prompts');
-  if (await Hive.boxExists('scheduled_notifications')) await Hive.deleteBoxFromDisk('scheduled_notifications');
-  if (await Hive.boxExists('user_feedback')) await Hive.deleteBoxFromDisk('user_feedback');
-  if (await Hive.boxExists('personality_traits')) await Hive.deleteBoxFromDisk('personality_traits');
-  if (await Hive.boxExists('additional_info_items')) await Hive.deleteBoxFromDisk('additional_info_items');
+
 
   // Open typed boxes
   await Hive.openBox<Todo>('todos');
@@ -159,12 +153,12 @@ void main() async {
   // Migrate data from old box to typed boxes
   await migrateData();
 
-  // Reschedule notifications
-  await rescheduleNotifications();
-
   // Initialize notification service
   // Pass the handler to the init method (ensure your LocalNotificationService supports this)
   await localNotificationService.init(onNotificationResponse: onNotificationResponse);
+
+  // Reschedule notifications (must be after init to ensure timezone is initialized)
+  await rescheduleNotifications();
 
   await Supabase.initialize(
     url: supabaseUrl,
@@ -186,43 +180,63 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class AuthWrapper extends ConsumerWidget {
+class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends ConsumerState<AuthWrapper> {
+  Future<void>? _syncFuture;
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
 
     return authState.when(
       data: (data) {
         if (data.session != null) {
-      // Set up realtime subscriptions after authentication
-      final todoSyncService = ref.read(todoSyncServiceProvider);
-      todoSyncService.setupRealtimeSubscriptions();
-      print('todo realtime subscriptions set');
+          // Set up realtime subscriptions after authentication
+          final todoSyncService = ref.read(todoSyncServiceProvider);
+          todoSyncService.setupRealtimeSubscriptions();
+          print('todo realtime subscriptions set');
 
-      final goalSyncService = ref.read(goalSyncServiceProvider);
-      goalSyncService.setupRealtimeSubscriptions();
-      print('goal realtime subscriptions set');
+          final goalSyncService = ref.read(goalSyncServiceProvider);
+          goalSyncService.setupRealtimeSubscriptions();
+          print('goal realtime subscriptions set');
 
-      final reminderSyncService = ref.read(reminderSyncServiceProvider);
-      reminderSyncService.setupRealtimeSubscriptions();
-      print('reminder realtime subscriptions set');
+          final reminderSyncService = ref.read(reminderSyncServiceProvider);
+          reminderSyncService.setupRealtimeSubscriptions();
+          print('reminder realtime subscriptions set');
 
-      final personalitySyncService = ref.read(personalitySyncServiceProvider);
-      personalitySyncService.setupRealtimeSubscriptions();
-      print('personality realtime subscriptions set');
+          final personalitySyncService = ref.read(personalitySyncServiceProvider);
+          personalitySyncService.setupRealtimeSubscriptions();
+          print('personality realtime subscriptions set');
 
-      final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
-      additionalInfoSyncService.setupRealtimeSubscriptions();
-      print('additional info realtime subscriptions set');
+          final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
+          additionalInfoSyncService.setupRealtimeSubscriptions();
+          print('additional info realtime subscriptions set');
 
-      final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
-      timerPromptSyncService.setupRealtimeSubscriptions();
-      print('timer prompt realtime subscriptions set');
-          // Watch the data sync provider to trigger sync when authenticated
-          ref.watch(dataSyncProvider);
-          return const Homepage();
+          final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
+          timerPromptSyncService.setupRealtimeSubscriptions();
+          print('timer prompt realtime subscriptions set');
+
+          // Trigger sync manually and wait for it
+          _syncFuture ??= _performSync();
+
+          return FutureBuilder(
+            future: _syncFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              } else if (snapshot.hasError) {
+                return Scaffold(body: Center(child: Text('Sync Error: ${snapshot.error}')));
+              } else {
+                return const Homepage();
+              }
+            },
+          );
         } else {
           return const LoginPage();
         }
@@ -230,6 +244,59 @@ class AuthWrapper extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(body: Center(child: Text('Auth Error: $error'))),
     );
+  }
+
+  Future<void> _performSync() async {
+    print('[AuthWrapper] Starting manual sync');
+    try {
+      final connectivity = ref.read(connectivityServiceProvider);
+
+      // Wait for online connectivity if currently offline
+      if (connectivity.currentStatus != ConnectivityStatus.online) {
+        print('[AuthWrapper] Currently offline, waiting for connectivity...');
+
+        // Wait for the first online status with timeout
+        await connectivity.status
+            .firstWhere((status) => status == ConnectivityStatus.online)
+            .timeout(const Duration(seconds: 30), onTimeout: () {
+          print('[AuthWrapper] Timeout waiting for connectivity');
+          return ConnectivityStatus.offline;
+        });
+
+        if (connectivity.currentStatus != ConnectivityStatus.online) {
+          print('[AuthWrapper] Still offline after timeout, skipping sync');
+          return;
+        }
+      }
+
+      print('[AuthWrapper] Online, performing sync');
+
+      final todoSyncService = ref.read(todoSyncServiceProvider);
+      await todoSyncService.syncFromSupabase();
+
+      final goalSyncService = ref.read(goalSyncServiceProvider);
+      await goalSyncService.syncFromSupabase();
+
+      final reminderSyncService = ref.read(reminderSyncServiceProvider);
+      await reminderSyncService.syncFromSupabase();
+
+      final settingsSyncService = ref.read(settingsSyncServiceProvider);
+      await settingsSyncService.syncFromSupabase();
+
+      final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
+      await timerPromptSyncService.syncFromSupabase();
+
+      final personalitySyncService = ref.read(personalitySyncServiceProvider);
+      await personalitySyncService.syncFromSupabase();
+
+      final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
+      await additionalInfoSyncService.syncFromSupabase();
+
+      print('[AuthWrapper] Manual sync completed successfully');
+    } catch (e) {
+      print('[AuthWrapper] Sync error: $e');
+      rethrow;
+    }
   }
 }
 

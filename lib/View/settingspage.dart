@@ -101,6 +101,39 @@ class SettingsPage extends ConsumerWidget {
               );
             },
           ),
+          ListTile(
+            title: const Text('Logout'),
+            trailing: const Icon(Icons.logout),
+            onTap: () async {
+              final viewModel = ref.read(settingsPageViewModelProvider.notifier);
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Confirm Logout'),
+                    content: const Text('Are you sure you want to logout?'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (confirmed == true) {
+                await viewModel.logout();
+                if (context.mounted) {
+                  Navigator.of(context).pop(); // Pop settings page
+                }
+              }
+            },
+          ),
         ],
       ),
     );

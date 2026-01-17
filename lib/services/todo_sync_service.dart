@@ -29,28 +29,47 @@ class TodoSyncService {
   /// Fetch initial data from Supabase and store in cache
   Future<void> syncFromSupabase() async {
     final user = _supabase.auth.currentUser;
-    if (user == null) return;
+    print('[TodoSync] Starting syncFromSupabase, user: ${user?.id}');
+    if (user == null) {
+      print('[TodoSync] User is null, skipping sync');
+      return;
+    }
 
     try {
+      print('[TodoSync] Fetching todos from Supabase for user: ${user.id}');
       final todosData = await _supabase.from('todos').select('*').eq('user_id', user.id) as List;
-      final todos = todosData.map((t) => Todo(
-        id: t['id'],
-        taskName: t['task_name'],
-        isCompleted: t['is_completed'] ?? false,
-        importance: t['importance'],
-        urgency: t['urgency'],
-        description: t['description'],
-        dueDate: t['due_date'] != null ? DateTime.parse(t['due_date']) : null,
-      )).toList();
+      print('[TodoSync] Fetched ${todosData.length} raw todos from Supabase');
+      final todos = todosData.map((t) {
+        print('[TodoSync] Processing todo: ${t['id']} - ${t['task_name']}');
+        return Todo(
+          id: t['id'],
+          taskName: t['task_name'],
+          isCompleted: t['is_completed'] ?? false,
+          importance: t['importance'],
+          urgency: t['urgency'],
+          description: t['description'],
+          dueDate: t['due_date'] != null ? DateTime.parse(t['due_date']) : null,
+        );
+      }).toList();
+      print('[TodoSync] Created ${todos.length} Todo objects');
 
       final box = await Hive.openBox<Todo>('todos');
+      print('[TodoSync] Opened todos box, current length: ${box.length}');
       final newTodos = {for (var todo in todos) todo.id!: todo};
       final oldKeys = box.keys.toSet();
       final keysToDelete = oldKeys.difference(newTodos.keys.toSet());
       if (keysToDelete.isNotEmpty) {
+        print('[TodoSync] Deleting ${keysToDelete.length} old todos');
         box.deleteAll(keysToDelete);
       }
-      box.putAll(newTodos);
+      if (newTodos.isNotEmpty) {
+        print('[TodoSync] Putting ${newTodos.length} new todos to cache');
+        box.putAll(newTodos);
+        print('[TodoSync] Cache updated, new length: ${box.length}');
+      } else {
+        print('[TodoSync] No new todos to put');
+      }
+      print('[TodoSync] Sync completed successfully');
     } catch (e) {
       print('[TodoSync] Error syncing todos: $e');
     }

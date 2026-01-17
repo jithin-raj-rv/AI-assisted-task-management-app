@@ -8,7 +8,7 @@ const corsHeaders = {
 }
 
 interface FunctionArgs {
-  userInput: string
+  timerPromptId: string
 }
 
 serve(async (req) => {
@@ -18,60 +18,44 @@ serve(async (req) => {
   }
 
   try {
-    const { userInput }: FunctionArgs = await req.json()
+    const { timerPromptId }: FunctionArgs = await req.json()
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-    // Get JWT from Authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    if (!timerPromptId) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - Missing Authorization header' }),
+        JSON.stringify({ error: 'timerPromptId is required' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
+          status: 400,
         }
       )
     }
 
-    // Extract and validate JWT token manually
-    const jwt = authHeader.replace('Bearer ', '')
-    let userId: string
-
-    try {
-      // Decode JWT payload
-      const payload = JSON.parse(atob(jwt.split('.')[1]))
-      userId = payload.sub
-
-      if (!userId) {
-        throw new Error('Invalid JWT payload - missing sub field')
+    // Create Supabase client with service role
+    const supabaseClient = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          persistSession: false,
+        },
       }
+    )
 
-      // Basic token validation - check expiry
-      const now = Math.floor(Date.now() / 1000)
-      if (payload.exp && payload.exp < now) {
-        throw new Error('Token expired')
-      }
+    // Fetch the timer prompt
+    const { data: timerPrompt, error: promptError } = await supabaseClient
+      .from('timer_prompts')
+      .select('*')
+      .eq('id', timerPromptId)
+      .single()
 
-    } catch (error) {
-      console.error('JWT validation error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Session expired, Please sign in again.' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        }
-      )
+    if (promptError || !timerPrompt) {
+      throw new Error('Failed to fetch timer prompt')
     }
 
-    // Initialize Supabase client with service role key for database operations
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
+    const userId = timerPrompt.user_id
 
     // Fetch user data
     const [todosRes, goalsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
@@ -98,7 +82,7 @@ serve(async (req) => {
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') || '')
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-    // Define tools
+    // Define tools (same as process-prompt)
     const themeTool = {
       functionDeclarations: [{
         name: 'updateAppColors',
@@ -416,10 +400,12 @@ For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt.
 For feedback: use addFeedback.
 For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait.
 For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo.
-For reminders: use addReminder, deleteReminder, modifyReminder.`
+For reminders: use addReminder, deleteReminder, modifyReminder.
+
+Process this timer prompt automatically and execute the appropriate actions.`
       },
       {
-        text: userInput
+        text: timerPrompt.prompt
       }
     ])
 
@@ -614,8 +600,31 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
       }
     }
 
+    // Update the timer prompt with response and mark as sent
+    const { error: updateError } = await supabaseClient
+      .from('timer_prompts')
+      .update({
+        response: responseText || response.text(),
+        sent: true
+      })
+      .eq('id', timerPromptId)
+
+    if (updateError) throw updateError
+
+    // If this is a recurring timer prompt, reschedule for next occurrence
+    if (timerPrompt.is_recurring) {
+      const { error: rescheduleError } = await supabaseClient.rpc('reschedule_recurring_timer_prompt', {
+        timer_prompt_id: timerPromptId
+      })
+
+      if (rescheduleError) {
+        console.error('Failed to reschedule recurring timer prompt:', rescheduleError)
+        // Don't throw error here as the main execution was successful
+      }
+    }
+
     return new Response(
-      JSON.stringify({ response: responseText || response.text() }),
+      JSON.stringify({ success: true, response: responseText || response.text() }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
