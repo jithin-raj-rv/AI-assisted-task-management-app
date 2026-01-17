@@ -21,6 +21,11 @@ class UserFeedbackCache {
     return box.values.toList();
   }
 
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
+
   Stream<List<UserFeedback>> watchAll() async* {
     final box = await _box;
     yield box.values.toList();

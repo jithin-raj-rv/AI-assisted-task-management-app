@@ -21,6 +21,11 @@ class GoalCache {
     return box.values.toList();
   }
 
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
+
   Stream<List<Goal>> watchAll() async* {
     final box = await _box;
     print('[GoalCache] watchAll: yielding initial ${box.values.length} goals');

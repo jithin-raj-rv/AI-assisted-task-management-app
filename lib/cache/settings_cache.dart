@@ -14,4 +14,9 @@ class SettingsCache {
     final box = await _box;
     await box.put(key, value);
   }
+
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
 }

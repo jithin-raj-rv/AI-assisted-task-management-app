@@ -15,20 +15,24 @@ import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
 
 
 class Homepage extends ConsumerStatefulWidget {
-  const Homepage({super.key});
+  final int initialPage;
+  final String? initialPrompt;
+  const Homepage({super.key, this.initialPage = 0, this.initialPrompt});
 
   @override
   ConsumerState<Homepage> createState() => _HomepageState();
 }
 
 class _HomepageState extends ConsumerState<Homepage> {
-  final PageController _pageController = PageController();
-  int _selectedIndex = 0;
+  late final PageController _pageController;
+  late int _selectedIndex;
   final _textController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialPage;
+    _pageController = PageController(initialPage: widget.initialPage);
     // Init is now called when the provider is created
   }
 
@@ -147,7 +151,7 @@ void _editTask(Todo todo) {
           const ReminderPage(),
           const TimerPromptPage(),
           const SettingsPage(),
-          const ChatScreen(),
+          ChatScreen(initialPrompt: widget.initialPage == 5 ? widget.initialPrompt : null),
         ],
       ),
       // floatingActionButton: 

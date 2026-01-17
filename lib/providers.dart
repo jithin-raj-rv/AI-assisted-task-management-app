@@ -22,66 +22,121 @@ final currentUserProvider = Provider<User?>((ref) {
   return auth.currentUser;
 });
 
-// Sync Provider - triggers sync when user becomes authenticated
-final dataSyncProvider = FutureProvider<void>((ref) async {
-  final authStateAsync = ref.watch(authStateProvider);
+final dataSyncProvider =
+    NotifierProvider<DataSyncNotifier, AsyncValue<void>>(
+        DataSyncNotifier.new);
 
-  // Wait for auth state to be available
-  final authState = authStateAsync.asData?.value;
+class DataSyncNotifier extends Notifier<AsyncValue<void>> {
+  bool _hasSynced = false;
 
-  if (authState?.session?.user != null) {
-    final connectivity = ref.watch(connectivityServiceProvider);
-
-    // Only sync if online
-    if (connectivity.currentStatus == ConnectivityStatus.online) {
-      try {
-        print('[DataSync] Starting initial data sync for user: ${authState?.session?.user.id}');
-
-        final todoSyncService = ref.read(todoSyncServiceProvider);
-        print('[DataSync] Starting todo sync');
-        await todoSyncService.syncFromSupabase();
-        print('[DataSync] Todo sync completed');
-
-        final goalSyncService = ref.read(goalSyncServiceProvider);
-        await goalSyncService.syncFromSupabase();
-        print('[DataSync] Goal sync completed');
-
-        final reminderSyncService = ref.read(reminderSyncServiceProvider);
-        await reminderSyncService.syncFromSupabase();
-        print('[DataSync] Reminder sync completed');
-
-        final settingsSyncService = ref.read(settingsSyncServiceProvider);
-        await settingsSyncService.syncFromSupabase();
-        print('[DataSync] Settings sync completed');
-
-        final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
-        await timerPromptSyncService.syncFromSupabase();
-        print('[DataSync] Timer prompt sync completed');
-
-        final personalitySyncService = ref.read(personalitySyncServiceProvider);
-        await personalitySyncService.syncFromSupabase();
-        print('[DataSync] Personality sync completed');
-
-        final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
-        await additionalInfoSyncService.syncFromSupabase();
-        print('[DataSync] Additional info sync completed');
-
-        print('[DataSync] All initial data sync completed successfully');
-      } catch (e) {
-        print('[DataSync] Error during initial data sync: $e');
-        // Re-throw to make the FutureProvider error
-        rethrow;
-      }
-    } else {
-      print('[DataSync] Offline: Skipping initial data sync, loading from local cache');
-    }
-  } else {
-    print('[DataSync] No authenticated user, skipping sync');
+  @override
+  AsyncValue<void> build() {
+    return const AsyncData(null);
   }
-});
+
+  Future<void> runInitialSync() async {
+    if (_hasSynced) return;
+
+    final connectivity = ref.read(connectivityServiceProvider);
+    if (connectivity.currentStatus != ConnectivityStatus.online) {
+      print('[DataSync] Offline, delaying sync');
+      return;
+    }
+
+    state = const AsyncLoading();
+    try {
+      print('[DataSync] Starting initial sync');
+
+      await ref.read(todoSyncServiceProvider).syncFromSupabase();
+      await ref.read(goalSyncServiceProvider).syncFromSupabase();
+      await ref.read(reminderSyncServiceProvider).syncFromSupabase();
+      await ref.read(settingsSyncServiceProvider).syncFromSupabase();
+      await ref.read(timerPromptSyncServiceProvider).syncFromSupabase();
+      await ref.read(personalitySyncServiceProvider).syncFromSupabase();
+      await ref.read(additionalInfoSyncServiceProvider).syncFromSupabase();
+
+      _hasSynced = true;
+      state = const AsyncData(null);
+      print('[DataSync] Initial sync completed');
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  void reset() {
+    _hasSynced = false;
+    state = const AsyncData(null);
+  }
+}
 
 // Reminder Page View Model
 final reminderPageViewModelProvider = Provider<ReminderPageViewModel>((ref) => ReminderPageViewModel(ref));
 
 // Settings Page View Model
 final settingsPageViewModelProvider = NotifierProvider<SettingsPageViewModel, SettingsPageState>(() => SettingsPageViewModel());
+
+// Auth State Manager - handles subscriptions and sync lifecycle
+class AuthStateManager extends Notifier<bool> {
+  bool _isAuthenticated = false;
+
+  @override
+  bool build() {
+    // Listen to auth state changes
+    ref.listen(authStateProvider, (previous, next) {
+      next.when(
+        data: (authState) {
+          final isNowAuthenticated = authState.session != null;
+          if (isNowAuthenticated && !_isAuthenticated) {
+            // Just became authenticated - setup subscriptions and sync
+            _setupForAuthenticatedUser();
+          } else if (!isNowAuthenticated && _isAuthenticated) {
+            // Just became unauthenticated - clear subscriptions
+            _clearForUnauthenticatedUser();
+          }
+          _isAuthenticated = isNowAuthenticated;
+          state = isNowAuthenticated;
+        },
+        loading: () {},
+        error: (error, stack) {},
+      );
+    });
+    return false; // Initial state
+  }
+
+  void _setupForAuthenticatedUser() {
+    print('[AuthStateManager] Setting up for authenticated user');
+
+    // Trigger initial data sync first
+    ref.read(dataSyncProvider.notifier).runInitialSync();
+
+    // Then setup realtime subscriptions
+    ref.read(todoSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(goalSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(reminderSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(personalitySyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(additionalInfoSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(timerPromptSyncServiceProvider).setupRealtimeSubscriptions();
+
+    print('[AuthStateManager] Realtime subscriptions set up');
+  }
+
+  void _clearForUnauthenticatedUser() {
+    print('[AuthStateManager] Clearing for unauthenticated user');
+
+    // Reset data sync state
+    ref.read(dataSyncProvider.notifier).reset();
+
+    // Clear realtime subscriptions
+    ref.read(todoSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(goalSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(reminderSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(personalitySyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(additionalInfoSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(timerPromptSyncServiceProvider).clearRealtimeSubscriptions();
+
+    print('[AuthStateManager] Realtime subscriptions cleared');
+  }
+}
+
+final authStateManagerProvider = NotifierProvider<AuthStateManager, bool>(() => AuthStateManager());

@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:to_do_list/Notification/local_notification_service.dart';
 import 'package:to_do_list/View/homepage.dart';
 import 'package:to_do_list/View/login_page.dart';
+import 'package:to_do_list/View/user_info_collection_page.dart';
+import 'package:to_do_list/View/onboarding_dialog.dart';
+import 'package:to_do_list/View/chatscreen.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import the new scheduled notification model
@@ -16,6 +19,11 @@ import 'package:to_do_list/models/personality_trait_model.dart';
 import 'package:to_do_list/models/additional_info_model.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
+import 'package:to_do_list/cache/todo_cache.dart';
+import 'package:to_do_list/cache/goal_cache.dart';
+import 'package:to_do_list/cache/scheduled_notification_cache.dart';
+import 'package:to_do_list/cache/personality_cache.dart';
+import 'package:to_do_list/cache/additional_info_cache.dart';
 import 'package:to_do_list/providers.dart'; // Import providers
 import 'package:to_do_list/sync_providers.dart'; // Import sync providers
 import 'package:to_do_list/services/connectivity_service.dart'; // Import connectivity service
@@ -180,62 +188,25 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class AuthWrapper extends ConsumerStatefulWidget {
+class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
   @override
-  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Ensure AuthStateManager is active and listening to auth changes
+    ref.watch(authStateManagerProvider);
 
-class _AuthWrapperState extends ConsumerState<AuthWrapper> {
-  Future<void>? _syncFuture;
-
-  @override
-  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
 
     return authState.when(
       data: (data) {
         if (data.session != null) {
-          // Set up realtime subscriptions after authentication
-          final todoSyncService = ref.read(todoSyncServiceProvider);
-          todoSyncService.setupRealtimeSubscriptions();
-          print('todo realtime subscriptions set');
+          final syncState = ref.watch(dataSyncProvider);
 
-          final goalSyncService = ref.read(goalSyncServiceProvider);
-          goalSyncService.setupRealtimeSubscriptions();
-          print('goal realtime subscriptions set');
-
-          final reminderSyncService = ref.read(reminderSyncServiceProvider);
-          reminderSyncService.setupRealtimeSubscriptions();
-          print('reminder realtime subscriptions set');
-
-          final personalitySyncService = ref.read(personalitySyncServiceProvider);
-          personalitySyncService.setupRealtimeSubscriptions();
-          print('personality realtime subscriptions set');
-
-          final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
-          additionalInfoSyncService.setupRealtimeSubscriptions();
-          print('additional info realtime subscriptions set');
-
-          final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
-          timerPromptSyncService.setupRealtimeSubscriptions();
-          print('timer prompt realtime subscriptions set');
-
-          // Trigger sync manually and wait for it
-          _syncFuture ??= _performSync();
-
-          return FutureBuilder(
-            future: _syncFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              } else if (snapshot.hasError) {
-                return Scaffold(body: Center(child: Text('Sync Error: ${snapshot.error}')));
-              } else {
-                return const Homepage();
-              }
-            },
+          return syncState.when(
+            data: (_) => const Homepage(),
+            loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Scaffold(body: Center(child: Text('Sync Error: $e'))),
           );
         } else {
           return const LoginPage();
@@ -244,59 +215,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(body: Center(child: Text('Auth Error: $error'))),
     );
-  }
-
-  Future<void> _performSync() async {
-    print('[AuthWrapper] Starting manual sync');
-    try {
-      final connectivity = ref.read(connectivityServiceProvider);
-
-      // Wait for online connectivity if currently offline
-      if (connectivity.currentStatus != ConnectivityStatus.online) {
-        print('[AuthWrapper] Currently offline, waiting for connectivity...');
-
-        // Wait for the first online status with timeout
-        await connectivity.status
-            .firstWhere((status) => status == ConnectivityStatus.online)
-            .timeout(const Duration(seconds: 30), onTimeout: () {
-          print('[AuthWrapper] Timeout waiting for connectivity');
-          return ConnectivityStatus.offline;
-        });
-
-        if (connectivity.currentStatus != ConnectivityStatus.online) {
-          print('[AuthWrapper] Still offline after timeout, skipping sync');
-          return;
-        }
-      }
-
-      print('[AuthWrapper] Online, performing sync');
-
-      final todoSyncService = ref.read(todoSyncServiceProvider);
-      await todoSyncService.syncFromSupabase();
-
-      final goalSyncService = ref.read(goalSyncServiceProvider);
-      await goalSyncService.syncFromSupabase();
-
-      final reminderSyncService = ref.read(reminderSyncServiceProvider);
-      await reminderSyncService.syncFromSupabase();
-
-      final settingsSyncService = ref.read(settingsSyncServiceProvider);
-      await settingsSyncService.syncFromSupabase();
-
-      final timerPromptSyncService = ref.read(timerPromptSyncServiceProvider);
-      await timerPromptSyncService.syncFromSupabase();
-
-      final personalitySyncService = ref.read(personalitySyncServiceProvider);
-      await personalitySyncService.syncFromSupabase();
-
-      final additionalInfoSyncService = ref.read(additionalInfoSyncServiceProvider);
-      await additionalInfoSyncService.syncFromSupabase();
-
-      print('[AuthWrapper] Manual sync completed successfully');
-    } catch (e) {
-      print('[AuthWrapper] Sync error: $e');
-      rethrow;
-    }
   }
 }
 
@@ -311,13 +229,6 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Workmanager().registerOneOffTask(
-    //   "aiTask",
-    //   "sendGeminiPrompt",
-    //   inputData: {
-    //     "prompt": "Generate today's optimal task plan",
-    //   },
-    // );
   }
 
   @override
@@ -347,9 +258,22 @@ class _MyAppState extends ConsumerState<MyApp> {
             ),
       home: const AuthWrapper(),
       routes: {
-        '/home': (context) => const Homepage(),
+        '/home': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map<String, dynamic>) {
+            return Homepage(
+              initialPage: args['page'] as int? ?? 0,
+              initialPrompt: args['prompt'] as String?,
+            );
+          } else if (args is int) {
+            return Homepage(initialPage: args);
+          } else {
+            return const Homepage();
+          }
+        },
         '/login': (context) => const LoginPage(),
-        '/userInfoCollection': (context) => const Homepage(),
+        '/userInfoCollection': (context) => const UserInfoCollectionPage(),
+        '/chat': (context) => ChatScreen(initialPrompt: ModalRoute.of(context)!.settings.arguments as String?),
       },
     );
   }

@@ -26,6 +26,11 @@ class TimerPromptCache {
     return box.values.toList();
   }
 
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
+
   Stream<List<TimerPrompt>> watchAll() async* {
     final box = await _box;
     yield box.values.toList();

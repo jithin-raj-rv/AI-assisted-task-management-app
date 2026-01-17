@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import flutter_riverpod
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/services/supabase_gemini_service.dart'; // Import supabase gemini service
@@ -154,7 +155,10 @@ String _generateInitialPrompt() {
                   final String geminiResponse = await SupabaseGeminiService.sendChatMessage(user.id, initialPrompt);
                   print('Gemini Initial Response: $geminiResponse');
 
-                  Navigator.pushReplacementNamed(context, '/home'); // Assuming '/home' is your main page route
+                  final settingsBox = Hive.box('settings');
+                  await settingsBox.put('onboarding_completed', true);
+
+                  Navigator.pushReplacementNamed(context, '/home', arguments: {'page': 5, 'prompt': 'Optimize my app and daily routine based on the information I just provided. Suggest improvements, new habits, and personalized recommendations.'}); // Navigate to home with chat page and optimization prompt
                 },
                 child: const Text('Submit'),
               ),

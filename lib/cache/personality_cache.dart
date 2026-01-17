@@ -21,6 +21,11 @@ class PersonalityCache {
     return box.values.toList();
   }
 
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
+
   Stream<List<PersonalityTrait>> watchAll() async* {
     final box = await _box;
     print('[PersonalityCache] watchAll: yielding initial ${box.values.length} traits');

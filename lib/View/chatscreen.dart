@@ -49,6 +49,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       }
 
+      // Get relevant chat history (last 5 messages for context)
+      // Include system prompt as first message if this is the first message
+      final relevantHistory = _chatData.currentChatMessages.length > 5
+          ? _chatData.currentChatMessages.skip(_chatData.currentChatMessages.length - 5).toList()
+          : _chatData.currentChatMessages;
+
+      // For the first message, we need to ensure system prompt is included in history
+      // The backend will handle adding the system prompt to the conversation
+
       setState(() {
         _chatData.addMessage(Chat(text: messageText, isUser: true));
         _isLoading = true;
@@ -61,17 +70,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           throw Exception('User not authenticated');
         }
 
-        final response = await SupabaseGeminiService.sendChatMessage(user.id, messageText);
+        final response = await SupabaseGeminiService.sendChatMessage(
+          user.id,
+          messageText,
+          chatHistory: relevantHistory, // Pass chat history
+        );
 
         setState(() {
           _chatData.addMessage(Chat(text: response, isUser: false));
           _isLoading = false;
         });
       } catch (e) {
+        String errorMessage = e.toString();
+
+        // Use the service's error message directly - it's already user-friendly
+        if (errorMessage.contains('Error: ')) {
+          errorMessage = errorMessage.substring(7); // Remove 'Error: ' prefix
+        }
+
         setState(() {
-          _chatData.addMessage(Chat(text: 'Error: $e', isUser: false));
+          _chatData.addMessage(Chat(text: errorMessage, isUser: false));
           _isLoading = false;
         });
+
+        // Show toast notification for critical errors
+        if (errorMessage.contains('sign in') || errorMessage.contains('session')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please sign in again to continue chatting')),
+          );
+        }
       }
     }
   }

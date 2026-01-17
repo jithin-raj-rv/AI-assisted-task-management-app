@@ -128,9 +128,7 @@ class SettingsPage extends ConsumerWidget {
 
               if (confirmed == true) {
                 await viewModel.logout();
-                if (context.mounted) {
-                  Navigator.of(context).pop(); // Pop settings page
-                }
+                // Navigation back to login will be handled automatically by AuthWrapper
               }
             },
           ),

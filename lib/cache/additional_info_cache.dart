@@ -21,6 +21,11 @@ class AdditionalInfoCache {
     return box.values.toList();
   }
 
+  Future<void> clear() async {
+    final box = await _box;
+    await box.clear();
+  }
+
   Stream<List<AdditionalInfo>> watchAll() async* {
     final box = await _box;
     print('[AdditionalInfoCache] watchAll: yielding initial ${box.values.length} info items');
