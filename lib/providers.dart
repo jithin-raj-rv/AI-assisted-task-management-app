@@ -4,6 +4,8 @@ import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
 import 'package:to_do_list/viewmodels/reminder_page_viewmodel.dart';
 import 'package:to_do_list/viewmodels/settings_viewmodel.dart';
+import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
+import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
 import 'package:to_do_list/services/auth_service.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 
@@ -75,6 +77,33 @@ final reminderPageViewModelProvider = Provider<ReminderPageViewModel>((ref) => R
 
 // Settings Page View Model
 final settingsPageViewModelProvider = NotifierProvider<SettingsPageViewModel, SettingsPageState>(() => SettingsPageViewModel());
+
+// Check if all viewmodels are ready (finished loading from cache)
+final allViewModelsReadyProvider = Provider<bool>((ref) {
+  final todoState = ref.watch(todoViewModelProvider);
+  final goalState = ref.watch(goalsPageViewModelProvider);
+  final reminderState = ref.watch(scheduledNotificationsViewModelProvider);
+
+  final allReady = !todoState.isLoading && !goalState.isLoading && !reminderState.isLoading;
+  print("allViewModelsReady: todos=${!todoState.isLoading}, goals=${!goalState.isLoading}, reminders=${!reminderState.isLoading}, total=$allReady");
+  return allReady;
+});
+
+// Simple boolean provider for whether user has data
+final userHasDataProvider = Provider<bool>((ref) {
+  final todoState = ref.watch(todoViewModelProvider);
+  final goalState = ref.watch(goalsPageViewModelProvider);
+  final reminderState = ref.watch(scheduledNotificationsViewModelProvider);
+
+  // Check if any cache has data
+  final hasTodos = todoState.todos.isNotEmpty;
+  final hasGoals = goalState.goals.isNotEmpty;
+  final hasReminders = reminderState.notifications.isNotEmpty;
+
+  final hasData = hasTodos || hasGoals || hasReminders;
+  print("userHasDataProvider: todos=${todoState.todos.length}, goals=${goalState.goals.length}, reminders=${reminderState.notifications.length}, hasData=$hasData");
+  return hasData;
+});
 
 // Auth State Manager - handles subscriptions and sync lifecycle
 class AuthStateManager extends Notifier<bool> {

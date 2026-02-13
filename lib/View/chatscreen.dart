@@ -20,14 +20,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ChatData _chatData = ChatData(); // Instantiate ChatData
   bool _isLoading = false;
+  bool _initialPromptProcessed = false; // Flag to prevent duplicate processing
 
   @override
   void initState() {
     super.initState();
     _chatData.loadData(); // Load chat data when the screen initializes
 
-    // If an initial prompt is provided (from a notification), start a new chat and send it
-    if (widget.initialPrompt != null) {
+    // If an initial prompt is provided (from onboarding), start a new chat and send it only once
+    if (widget.initialPrompt != null && !_initialPromptProcessed) {
+      _initialPromptProcessed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _startNewChat();
         _sendMessage(customText: widget.initialPrompt);

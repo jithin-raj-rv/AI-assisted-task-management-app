@@ -1,32 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:to_do_list/main.dart'; // For UserInfoCollectionDialog
 
-class OnboardingDialog extends StatefulWidget {
+class OnboardingDialog extends ConsumerStatefulWidget {
   const OnboardingDialog({super.key});
 
   @override
-  State<OnboardingDialog> createState() => _OnboardingDialogState();
+  ConsumerState<OnboardingDialog> createState() => _OnboardingDialogState();
 }
 
-class _OnboardingDialogState extends State<OnboardingDialog> {
+class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
   Future<void> _skipOnboarding() async {
     final settingsBox = Hive.box('settings');
     await settingsBox.put('onboarding_completed', true);
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.of(context).pop(); // Close the modal
     }
+  }
+
+  void _startQuiz() {
+    // Close current modal and show UserInfoCollectionDialog
+    Navigator.of(context).pop();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const UserInfoCollectionDialog(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Get Started'),
-        automaticallyImplyLeading: false, // Remove back button
-      ),
-      body: Padding(
+    return Dialog(
+      child: Container(
+        width: double.maxFinite,
         padding: const EdgeInsets.all(24.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -60,9 +70,7 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/userInfoCollection');
-                    },
+                    onPressed: _startQuiz,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: Colors.blue,

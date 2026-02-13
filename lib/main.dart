@@ -27,6 +27,7 @@ import 'package:to_do_list/cache/additional_info_cache.dart';
 import 'package:to_do_list/providers.dart'; // Import providers
 import 'package:to_do_list/sync_providers.dart'; // Import sync providers
 import 'package:to_do_list/services/connectivity_service.dart'; // Import connectivity service
+import 'package:to_do_list/services/supabase_gemini_service.dart'; // Import supabase gemini service
 import 'package:to_do_list/config/supabase_config.dart';
 
 final localNotificationService = LocalNotificationService();
@@ -188,11 +189,18 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class AuthWrapper extends ConsumerWidget {
+class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends ConsumerState<AuthWrapper> {
+  bool _onboardingDialogShown = false; // Prevent duplicate onboarding dialogs
+
+  @override
+  Widget build(BuildContext context) {
     // Ensure AuthStateManager is active and listening to auth changes
     ref.watch(authStateManagerProvider);
 
@@ -204,7 +212,14 @@ class AuthWrapper extends ConsumerWidget {
           final syncState = ref.watch(dataSyncProvider);
 
           return syncState.when(
-            data: (_) => const Homepage(),
+            data: (_) {
+              // After sync completes, check for onboarding
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final userHasData = ref.read(userHasDataProvider);
+                _checkAndShowOnboarding(userHasData);
+              });
+              return const Homepage();
+            },
             loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
             error: (e, _) => Scaffold(body: Center(child: Text('Sync Error: $e'))),
           );
@@ -215,6 +230,29 @@ class AuthWrapper extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(body: Center(child: Text('Auth Error: $error'))),
     );
+  }
+
+  void _checkAndShowOnboarding(bool userHasData) {
+    final allReady = ref.read(allViewModelsReadyProvider);
+    if (!allReady) return; // Wait for all viewmodels to be ready
+
+    // Prevent showing onboarding dialog multiple times in the same session
+    if (_onboardingDialogShown) return;
+
+    // Check if onboarding is already completed
+    final settingsBox = Hive.box('settings');
+    final onboardingCompleted = settingsBox.get('onboarding_completed', defaultValue: false);
+    if (onboardingCompleted) return;
+
+    print("Checking onboarding: allReady=$allReady, userHasData=$userHasData");
+    if (!userHasData) {
+      _onboardingDialogShown = true; // Mark as shown to prevent duplicates
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const OnboardingDialog(),
+      );
+    }
   }
 }
 
@@ -280,6 +318,238 @@ class _MyAppState extends ConsumerState<MyApp> {
 }
 
 
+class UserInfoCollectionDialog extends ConsumerStatefulWidget {
+  const UserInfoCollectionDialog({super.key});
+
+  @override
+  ConsumerState<UserInfoCollectionDialog> createState() => _UserInfoCollectionDialogState();
+}
+
+class _UserInfoCollectionDialogState extends ConsumerState<UserInfoCollectionDialog> {
+  final UserInfoCollectionDB _db = UserInfoCollectionDB();
+  final Map<String, dynamic> _userResponses = {};
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _db.loadQuestions();
+    _userResponses.addAll(_db.loadUserResponses());
+  }
+
+  Widget _buildQuestionWidget(Question question) {
+    switch (question.type) {
+      case QuestionType.text:
+      case QuestionType.number:
+        return TextFormField(
+          initialValue: _userResponses[question.id] ?? '',
+          decoration: InputDecoration(
+            labelText: question.text,
+            border: const OutlineInputBorder(),
+          ),
+          keyboardType: question.type == QuestionType.number
+              ? TextInputType.number
+              : TextInputType.text,
+          onChanged: (value) {
+            setState(() {
+              _userResponses[question.id] = value;
+            });
+          },
+        );
+
+      case QuestionType.singleChoice:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(question.text, style: const TextStyle(fontSize: 16)),
+            ),
+            ...question.options!.map(
+              (option) => RadioListTile<String>(
+                title: Text(option),
+                value: option,
+                groupValue: _userResponses[question.id],
+                onChanged: (value) {
+                  setState(() {
+                    _userResponses[question.id] = value;
+                  });
+                },
+              ),
+            ),
+          ],
+        );
+
+      case QuestionType.multiChoice:
+        if (_userResponses[question.id] == null) {
+          _userResponses[question.id] = <String>[];
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(question.text, style: const TextStyle(fontSize: 16)),
+            ),
+            ...question.options!.map(
+              (option) => CheckboxListTile(
+                title: Text(option),
+                value: (_userResponses[question.id] as List<String>).contains(option),
+                onChanged: (bool? checked) {
+                  setState(() {
+                    if (checked == true) {
+                      (_userResponses[question.id] as List<String>).add(option);
+                    } else {
+                      (_userResponses[question.id] as List<String>).remove(option);
+                    }
+                  });
+                },
+              ),
+            ),
+          ],
+        );
+    }
+    return const SizedBox.shrink();
+  }
+
+  String _generateInitialPrompt() {
+    final StringBuffer prompt = StringBuffer();
+    prompt.writeln("Here is some initial information about me:");
+
+    for (var question in _db.questions) {
+      final answer = _userResponses[question.id];
+      if (answer != null) {
+        prompt.writeln("${question.text}: ${answer.toString()}");
+      }
+    }
+
+    prompt.writeln(
+      "\nBased on this, analyze my personality, goals, constraints, clear all existing goals, personality,additional information, add new goals, personality,additional information based on the quiz. don't ask questions. just do it"
+    );
+
+    return prompt.toString();
+  }
+
+  Future<void> _submitResponses() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Save user responses
+      await _db.saveUserResponses(_userResponses);
+      print('User Responses: $_userResponses');
+
+      // Generate and send initial prompt
+      final String initialPrompt = _generateInitialPrompt();
+      final user = ref.read(currentUserProvider);
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+      final String geminiResponse = await SupabaseGeminiService.sendChatMessage(user.id, initialPrompt);
+      print('Gemini Initial Response: $geminiResponse');
+
+      // Mark onboarding as completed
+      final settingsBox = Hive.box('settings');
+      await settingsBox.put('onboarding_completed', true);
+
+      // Close the dialog
+      Navigator.of(context).pop();
+
+      // Navigate to chat screen with optimize message
+      final optimizeMessage = 'Optimize my app and daily routine based on the information I just provided. Suggest improvements, new habits, and personalized recommendations.';
+      Navigator.of(context).pushReplacementNamed('/chat', arguments: optimizeMessage);
+
+    } catch (e) {
+      print('Error submitting responses: $e');
+      // Show error dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to submit responses: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        width: double.maxFinite,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'User Information',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () async {
+                    final settingsBox = Hive.box('settings');
+                    await settingsBox.put('onboarding_completed', true);
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Please provide some information about yourself.',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ..._db.questions.map((question) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: _buildQuestionWidget(question),
+                        )),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _isSubmitting ? null : _submitResponses,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TimerPromptExecutionDialog extends ConsumerStatefulWidget {
   final TimerPrompt prompt;
   const TimerPromptExecutionDialog({super.key, required this.prompt});
@@ -336,7 +606,7 @@ class _TimerPromptExecutionDialogState extends ConsumerState<TimerPromptExecutio
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.prompt.prompt),
-      content: _isLoading 
+      content: _isLoading
           ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
           : SingleChildScrollView(child: Text(_response ?? '')),
       actions: [

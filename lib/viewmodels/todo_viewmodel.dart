@@ -7,11 +7,15 @@ import 'package:to_do_list/sync_providers.dart';
 
 class TodoState {
   final List<Todo> todos;
+  final bool isLoading;
 
-  const TodoState({this.todos = const []});
+  const TodoState({this.todos = const [], this.isLoading = false});
 
-  TodoState copyWith({List<Todo>? todos}) {
-    return TodoState(todos: todos ?? this.todos);
+  TodoState copyWith({List<Todo>? todos, bool? isLoading}) {
+    return TodoState(
+      todos: todos ?? this.todos,
+      isLoading: isLoading ?? this.isLoading,
+    );
   }
 }
 
@@ -24,10 +28,10 @@ class TodoViewModel extends Notifier<TodoState> {
     _syncService = ref.watch(todoSyncServiceProvider);
     _cache.watchAll().listen((todos) {
       print('[TodoViewModel] Cache updated with ${todos.length} todos: ${todos.map((t) => t.id).toList()}');
-      state = TodoState(todos: todos);
+      state = TodoState(todos: todos, isLoading: false);
     });
     print('[TodoViewModel] Built TodoViewModel');
-    return TodoState(todos: []);
+    return const TodoState(isLoading: true);
   }
 
 

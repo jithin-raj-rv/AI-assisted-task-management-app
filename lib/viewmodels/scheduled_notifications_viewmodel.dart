@@ -7,11 +7,15 @@ import 'package:uuid/uuid.dart';
 
 class ScheduledNotificationsState {
   final List<ScheduledNotification> notifications;
+  final bool isLoading;
 
-  const ScheduledNotificationsState({this.notifications = const []});
+  const ScheduledNotificationsState({this.notifications = const [], this.isLoading = false});
 
-  ScheduledNotificationsState copyWith({List<ScheduledNotification>? notifications}) {
-    return ScheduledNotificationsState(notifications: notifications ?? this.notifications);
+  ScheduledNotificationsState copyWith({List<ScheduledNotification>? notifications, bool? isLoading}) {
+    return ScheduledNotificationsState(
+      notifications: notifications ?? this.notifications,
+      isLoading: isLoading ?? this.isLoading,
+    );
   }
 }
 
@@ -23,9 +27,9 @@ class ScheduledNotificationsViewModel extends Notifier<ScheduledNotificationsSta
   ScheduledNotificationsState build() {
     _syncService = ref.watch(reminderSyncServiceProvider);
     _cache.watchAll().listen((notifications) {
-      state = ScheduledNotificationsState(notifications: notifications);
+      state = ScheduledNotificationsState(notifications: notifications, isLoading: false);
     });
-    return const ScheduledNotificationsState();
+    return const ScheduledNotificationsState(isLoading: true);
   }
 
   Future<void> addNotification(ScheduledNotification notification) async {

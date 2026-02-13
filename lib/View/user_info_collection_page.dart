@@ -155,8 +155,6 @@ String _generateInitialPrompt() {
                   final String geminiResponse = await SupabaseGeminiService.sendChatMessage(user.id, initialPrompt);
                   print('Gemini Initial Response: $geminiResponse');
 
-                  final settingsBox = Hive.box('settings');
-                  await settingsBox.put('onboarding_completed', true);
 
                   Navigator.pushReplacementNamed(context, '/home', arguments: {'page': 5, 'prompt': 'Optimize my app and daily routine based on the information I just provided. Suggest improvements, new habits, and personalized recommendations.'}); // Navigate to home with chat page and optimization prompt
                 },

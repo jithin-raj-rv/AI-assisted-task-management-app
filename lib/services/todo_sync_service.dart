@@ -180,6 +180,12 @@ class TodoSyncService {
       throw Exception('Cannot sync while offline');
     }
 
+    // Delete from Supabase
     await _supabase.from('todos').delete().eq('id', id);
+
+    // Immediately update local cache
+    final box = await Hive.openBox<Todo>('todos');
+    await box.delete(id);
+    print('[TodoSync] Deleted todo $id from local cache');
   }
 }
