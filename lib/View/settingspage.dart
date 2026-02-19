@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:to_do_list/theme.dart';
+import 'package:to_do_list/foreground_task_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
@@ -11,12 +13,36 @@ import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
+import 'package:to_do_list/main.dart';
 
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  bool _isRunningService = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initServiceState();
+  }
+
+  Future<void> _initServiceState() async {
+    try {
+      final running = await FlutterForegroundTask.isRunningService;
+      if (mounted) setState(() => _isRunningService = running);
+    } catch (e) {
+      // If the plugin API differs, default to false
+      if (mounted) setState(() => _isRunningService = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeNotifier = ref.watch(themeProvider.notifier);
     final isDarkMode = ref.watch(themeProvider).background == Colors.black; // Simple check for dark mode
     final appTheme = ref.watch(themeProvider);
@@ -33,6 +59,72 @@ class SettingsPage extends ConsumerWidget {
             value: isDarkMode,
             onChanged: (value) {
               themeNotifier.toggleTheme(); // This method will be implemented in theme.dart
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Background Reminder Monitoring'),
+            subtitle: const Text('Show persistent notification for reminder alerts'),
+            value: _isRunningService,
+            onChanged: (value) async {
+              if (value) {
+                try {
+                  await FlutterForegroundTask.startService(
+                    notificationTitle: 'Todo App Active',
+                    notificationText: 'Monitoring your reminders in background',
+                    callback: startCallback,
+                    notificationButtons: [NotificationButton(id: 'stop', text: 'Stop')],
+                  );
+                  if (mounted) setState(() => _isRunningService = true);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Background monitoring enabled')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to start foreground service: $e')),
+                    );
+                  }
+                  if (mounted) setState(() => _isRunningService = false);
+                }
+              } else {
+                try {
+                  await FlutterForegroundTask.stopService();
+                  if (mounted) setState(() => _isRunningService = false);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Background monitoring disabled')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to stop foreground service: $e')),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+          ListTile(
+            title: const Text('Request Notification Permission'),
+            subtitle: const Text('Ask the OS to allow notifications (Android 13+)'),
+            onTap: () async {
+              try {
+                final granted = await localNotificationService.requestPermission();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(granted == true ? 'Notifications allowed' : 'Notifications denied or not supported')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Permission request failed: $e')),
+                  );
+                }
+              }
             },
           ),
           ListTile(

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:to_do_list/Notification/local_notification_service.dart';
+import 'package:to_do_list/foreground_task_handler.dart';
 import 'package:to_do_list/View/homepage.dart';
 import 'package:to_do_list/View/login_page.dart';
 import 'package:to_do_list/View/user_info_collection_page.dart';
@@ -166,12 +168,62 @@ void main() async {
   // Pass the handler to the init method (ensure your LocalNotificationService supports this)
   await localNotificationService.init(onNotificationResponse: onNotificationResponse);
 
+  // Request notification permission (required for Android 13+)
+  final bool? granted = await localNotificationService.requestPermission();
+  if (granted != true) {
+    print('Notification permission denied');
+  } else {
+    print('Notification permission granted');
+
+    // Wait a bit for channel creation, then test notification
+    await Future.delayed(const Duration(seconds: 2));
+
+    try {
+      print('Attempting to show test notification...');
+      await localNotificationService.showNotification(
+        id: 999,
+        title: 'Test Notification',
+        body: 'Notifications are working! Time: ${DateTime.now()}',
+      );
+      print('Test notification sent successfully');
+
+      // Also try with a different ID and slight delay
+      await Future.delayed(const Duration(seconds: 1));
+      await localNotificationService.showNotification(
+        id: 1000,
+        title: 'Second Test',
+        body: 'Another notification test',
+      );
+      print('Second test notification sent');
+    } catch (e) {
+      print('Test notification failed: $e');
+    }
+  }
+
   // Reschedule notifications (must be after init to ensure timezone is initialized)
   await rescheduleNotifications();
 
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
+  );
+
+  // Initialize foreground task for persistent background monitoring
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'foreground_service',
+      channelName: 'Todo App Background',
+      channelDescription: 'App is running in background to monitor reminders',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+    ),
+    iosNotificationOptions: const IOSNotificationOptions(),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      eventAction: ForegroundTaskEventAction.nothing(),
+      autoRunOnBoot: false,
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ),
   );
 
   // Listen to auth state changes to (re)attach realtime subscriptions reliably

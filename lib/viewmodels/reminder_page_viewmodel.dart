@@ -9,6 +9,7 @@ import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/viewmodels/user_feedback_viewmodel.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
+import 'package:to_do_list/main.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
@@ -75,6 +76,12 @@ class ReminderPageViewModel {
         );
 
         await ref.read(scheduledNotificationsViewModelProvider.notifier).addNotification(newReminder);
+        // Schedule the notification with the local notification plugin (main isolate)
+        try {
+          await localNotificationService.showScheduledNotification(notification: newReminder);
+        } catch (e) {
+          print('[ReminderVM] Failed to schedule local notification: $e');
+        }
       }
     }
   }
@@ -137,7 +144,7 @@ class ReminderPageViewModel {
 
       // If there are more dates, create new reminders
       const uuid = Uuid();
-      for (int i = 1; i < reminderDateTimes.length; i++) {
+        for (int i = 1; i < reminderDateTimes.length; i++) {
         final newReminder = ScheduledNotification(
           id: uuid.v4(),
           title: title,
@@ -153,12 +160,22 @@ class ReminderPageViewModel {
           updatedAt: DateTime.now(),
         );
         await ref.read(scheduledNotificationsViewModelProvider.notifier).addNotification(newReminder);
+        try {
+          await localNotificationService.showScheduledNotification(notification: newReminder);
+        } catch (e) {
+          print('[ReminderVM] Failed to schedule local notification: $e');
+        }
       }
     }
   }
 
   Future<void> deleteReminder(ScheduledNotification reminder) async {
     await ref.read(scheduledNotificationsViewModelProvider.notifier).deleteNotification(reminder.id);
+    try {
+      await localNotificationService.cancelNotificationByStringId(reminder.id);
+    } catch (e) {
+      print('[ReminderVM] Failed to cancel local notification: $e');
+    }
   }
 
   Future<void> handleFeedback(BuildContext context, ScheduledNotification notification, String response) async {

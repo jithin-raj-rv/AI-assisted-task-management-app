@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -65,6 +66,18 @@ class LocalNotificationService {
         }
       },
     );
+
+    // Create notification channel for Android 8.0+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'your_channel_id',
+      'your_channel_name',
+      description: 'your_channel_description',
+      importance: Importance.max,
+    );
+
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   void onDidReceiveLocalNotification(
@@ -82,18 +95,27 @@ class LocalNotificationService {
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'your_channel_id',
       'your_channel_name',
       channelDescription: 'your_channel_description',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       ticker: 'ticker',
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      ledColor: const Color(0xFF0000FF),
+      ledOnMs: 1000,
+      ledOffMs: 500,
+      styleInformation: BigTextStyleInformation(body),
     );
 
-    const NotificationDetails platformChannelSpecifics =
+    final NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    print('Showing notification: id=$id, title=$title, body=$body');
 
     await _flutterLocalNotificationsPlugin.show(
       id,
@@ -102,6 +124,8 @@ class LocalNotificationService {
       platformChannelSpecifics,
       payload: payload,
     );
+
+    print('Notification show completed');
   }
 
   Future<void> showScheduledNotification({
@@ -165,7 +189,7 @@ class LocalNotificationService {
       // Ensure we interpret the scheduledDate as local wall-clock time
       tz.TZDateTime.from(notification.scheduledDate.toLocal(), tz.local),
       platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: notification.payload,
@@ -176,6 +200,12 @@ class LocalNotificationService {
     await _flutterLocalNotificationsPlugin.cancel(id);
   }
 
+  /// Helper to cancel by the original string ID used in ScheduledNotification
+  Future<void> cancelNotificationByStringId(String id) async {
+    final int32 = _convertIdTo32Bit(id);
+    await cancelNotification(int32);
+  }
+
   Future<void> cancelAllNotifications() async {
     await _flutterLocalNotificationsPlugin.cancelAll();
   }
@@ -184,11 +214,16 @@ class LocalNotificationService {
       List<ScheduledNotification> notifications) async {
     await cancelAllNotifications();
     final now = DateTime.now();
-    
+
     for (var notification in notifications) {
       // Only reschedule notifications that are scheduled for the future
       if (notification.scheduledDate.isAfter(now)) {
-        await showScheduledNotification(notification: notification);
+        try {
+          await showScheduledNotification(notification: notification);
+        } catch (e) {
+          print('Failed to schedule notification ${notification.id}: $e');
+          // Continue with other notifications even if one fails
+        }
       } else {
         print('Skipping past notification: ${notification.id} scheduled for ${notification.scheduledDate}');
       }
@@ -262,5 +297,13 @@ class LocalNotificationService {
       platformChannelSpecifics,
       payload: payload,
     );
+  }
+
+  Future<bool?> requestPermission() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+    return await androidPlugin?.requestNotificationsPermission();
   }
 }

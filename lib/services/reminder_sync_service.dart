@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 import 'package:to_do_list/cache/scheduled_notification_cache.dart';
+import 'package:to_do_list/main.dart';
 
 class ReminderSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -105,7 +106,7 @@ class ReminderSyncService {
       event: PostgresChangeEvent.all,
       schema: 'public',
       table: 'reminders',
-      callback: (payload) {
+      callback: (payload) async {
         print('[ReminderSync] Real-time event received: ${payload.eventType} for table: ${payload.table}');
         final record = payload.newRecord ?? payload.oldRecord;
         // For DELETE events, trust RLS - if we received it, it's for our user
@@ -135,6 +136,18 @@ class ReminderSyncService {
             box.put(reminder.id, reminder);
             print('[ReminderSync] Updated cache for reminder: ${reminder.id}');
             print('[ReminderSync] Cache now has ${box.length} items');
+            // Schedule the reminder with local notification service if it's in the future
+            try {
+              final now = DateTime.now();
+              if (reminder.scheduledDate.isAfter(now)) {
+                await localNotificationService.showScheduledNotification(notification: reminder);
+                print('[ReminderSync] Scheduled local notification for: ${reminder.id} at ${reminder.scheduledDate}');
+              } else {
+                print('[ReminderSync] Not scheduling past reminder: ${reminder.id} scheduled for ${reminder.scheduledDate}');
+              }
+            } catch (e) {
+              print('[ReminderSync] Failed to schedule local notification for ${reminder.id}: $e');
+            }
           } else if (payload.eventType.name == 'delete') {
             final record = payload.oldRecord!;
             print('[ReminderSync] Processing DELETE for reminder id: ${record['id']}');
