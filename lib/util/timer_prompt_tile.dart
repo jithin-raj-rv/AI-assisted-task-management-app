@@ -85,14 +85,14 @@ class TimerPromptTile extends StatelessWidget {
 
   String _getRecurrenceText(TimerPrompt prompt) {
     if (!prompt.isRecurring) {
-      return 'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(prompt.scheduledTime)}';
+      return 'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(prompt.scheduledTime.toLocal())}';
     }
     if (prompt.weekdays == null || prompt.weekdays!.isEmpty) {
-      return 'Daily at ${DateFormat('hh:mm a').format(prompt.scheduledTime)}';
+      return 'Daily at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
     }
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final sortedDays = List<int>.from(prompt.weekdays!)..sort();
     final dayNames = sortedDays.map((d) => days[d - 1]).join(', ');
-    return 'Weekly ($dayNames) at ${DateFormat('hh:mm a').format(prompt.scheduledTime)}';
+    return 'Weekly ($dayNames) at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
   }
 }

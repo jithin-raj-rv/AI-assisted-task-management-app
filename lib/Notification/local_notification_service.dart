@@ -3,8 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import for initializing timezone data
-import 'dart:convert';
+import 'package:to_do_list/models/scheduled_notification_model.dart';
 
 class LocalNotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -131,40 +130,79 @@ class LocalNotificationService {
   Future<void> showScheduledNotification({
     required ScheduledNotification notification,
   }) async {
-    // Basic details
+    final now = DateTime.now();
+    final notificationId = notification.id;
+    final scheduledDate = notification.scheduledDate;
+    final timeUntilNotification = scheduledDate.difference(now);
+    
+    print('╔═══════════════════════════════════════════════════════════════');
+    print('║ [LocalNotification] NEW NOTIFICATION SCHEDULE REQUEST');
+    print('║ Notification ID: $notificationId');
+    print('║ Title: ${notification.title}');
+    print('║ Scheduled Date (UTC): $scheduledDate');
+    print('║ Current Time: $now');
+    print('║ Time Until Notification: ${timeUntilNotification.inMinutes} minutes');
+    print('║ Is In Past: ${scheduledDate.isBefore(now)}');
+    print('╚═══════════════════════════════════════════════════════════════');
+    
+    // If notification is in the past, show immediately
+    if (scheduledDate.isBefore(now)) {
+      print('[LocalNotification] ⚠️ Notification is in the past, showing immediately!');
+      await showNotification(
+        id: _convertIdTo32Bit(notificationId),
+        title: notification.title,
+        body: notification.body ?? 'Reminder',
+        payload: notification.payload,
+      );
+      print('[LocalNotification] ✓ Shown as immediate notification');
+      return;
+    }
+    
+    // Basic details with more robust settings for background
     AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'your_channel_id',
       'your_channel_name',
       channelDescription: 'your_channel_description',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max, // Use MAX priority for reliability
       ticker: 'ticker',
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
     );
 
     // Modify based on reminder type
+    AndroidNotificationDetails finalAndroidDetails;
+    
     if (notification.reminderType == ReminderType.option &&
         notification.options != null &&
         notification.options!.isNotEmpty) {
-      androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      finalAndroidDetails = AndroidNotificationDetails(
         'your_channel_id',
         'your_channel_name',
         channelDescription: 'your_channel_description',
         importance: Importance.max,
-        priority: Priority.high,
+        priority: Priority.max,
         ticker: 'ticker',
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.reminder,
+        visibility: NotificationVisibility.public,
         actions: notification.options!
             .map((option) => AndroidNotificationAction(option, option))
             .toList(),
       );
     } else if (notification.reminderType == ReminderType.answerBack) {
-      androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      finalAndroidDetails = AndroidNotificationDetails(
         'your_channel_id',
         'your_channel_name',
         channelDescription: 'your_channel_description',
         importance: Importance.max,
-        priority: Priority.high,
+        priority: Priority.max,
         ticker: 'ticker',
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.reminder,
+        visibility: NotificationVisibility.public,
         actions: [
           AndroidNotificationAction(
             'reply',
@@ -177,23 +215,96 @@ class LocalNotificationService {
           ),
         ],
       );
+    } else {
+      finalAndroidDetails = androidPlatformChannelSpecifics;
     }
 
     final NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+        NotificationDetails(android: finalAndroidDetails);
 
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      _convertIdTo32Bit(notification.id),
-      notification.title,
-      notification.body,
-      // Ensure we interpret the scheduledDate as local wall-clock time
-      tz.TZDateTime.from(notification.scheduledDate.toLocal(), tz.local),
-      platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: notification.payload,
-    );
+    // Convert to local timezone
+    final scheduledTime = tz.TZDateTime.from(scheduledDate, tz.local);
+    print('[LocalNotification] Converted to local timezone: $scheduledTime');
+
+    // Check if we have permission to schedule exact alarms
+    bool? canScheduleExact = await canScheduleExactNotifications();
+    print('[LocalNotification] Permission check - Can schedule exact: $canScheduleExact');
+
+    // ════════════════════════════════════════════════════════════════
+    // METHOD 1: Try exactAllowWhileIdle (MOST RELIABLE)
+    // ════════════════════════════════════════════════════════════════
+    print('[LocalNotification] Trying METHOD 1: exactAllowWhileIdle...');
+    try {
+      await _flutterLocalNotificationsPlugin.zonedSchedule(
+        _convertIdTo32Bit(notificationId),
+        notification.title,
+        notification.body,
+        scheduledTime,
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: notification.payload,
+        matchDateTimeComponents: null,
+      );
+      print('╔═══════════════════════════════════════════════════════════════');
+      print('║ ✅ SUCCESS! Notification scheduled with exactAllowWhileIdle');
+      print('║ ID: $notificationId');
+      print('║ Will fire at: $scheduledTime');
+      print('╚═══════════════════════════════════════════════════════════════');
+      return;
+    } catch (e) {
+      print('[LocalNotification] ❌ METHOD 1 FAILED: $e');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // METHOD 2: Try inexactAllowWhileIdle (FALLBACK)
+    // ════════════════════════════════════════════════════════════════
+    print('[LocalNotification] Trying METHOD 2: inexactAllowWhileIdle...');
+    try {
+      await _flutterLocalNotificationsPlugin.zonedSchedule(
+        _convertIdTo32Bit(notificationId),
+        notification.title,
+        notification.body,
+        scheduledTime,
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: notification.payload,
+      );
+      print('╔═══════════════════════════════════════════════════════════════');
+      print('║ ✅ SUCCESS! Notification scheduled with inexactAllowWhileIdle');
+      print('║ ID: $notificationId');
+      print('║ Will fire at: $scheduledTime (approximate)');
+      print('╚═══════════════════════════════════════════════════════════════');
+      return;
+    } catch (e) {
+      print('[LocalNotification] ❌ METHOD 2 FAILED: $e');
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // METHOD 3: LAST RESORT - Show immediately
+    // ════════════════════════════════════════════════════════════════
+    print('[LocalNotification] ⚠️ All scheduling methods failed!');
+    print('[LocalNotification] Falling back to showing notification immediately...');
+    
+    try {
+      await showNotification(
+        id: _convertIdTo32Bit(notificationId),
+        title: notification.title,
+        body: notification.body ?? 'Reminder',
+        payload: notification.payload,
+      );
+      print('╔═══════════════════════════════════════════════════════════════');
+      print('║ ⚠️ FALLBACK: Shown as immediate notification (NOT SCHEDULED)');
+      print('║ This means scheduled notifications may not work!');
+      print('║ Check: Notification permission, Exact alarm permission,');
+      print('║        Battery optimization settings');
+      print('╚═══════════════════════════════════════════════════════════════');
+    } catch (e3) {
+      print('[LocalNotification] 💀 ALL METHODS FAILED: $e3');
+    }
   }
 
   Future<void> cancelNotification(int id) async {
@@ -216,16 +327,30 @@ class LocalNotificationService {
     final now = DateTime.now();
 
     for (var notification in notifications) {
-      // Only reschedule notifications that are scheduled for the future
+      // If notification is in the future, schedule it
       if (notification.scheduledDate.isAfter(now)) {
         try {
           await showScheduledNotification(notification: notification);
         } catch (e) {
           print('Failed to schedule notification ${notification.id}: $e');
-          // Continue with other notifications even if one fails
+        }
+      } 
+      // If notification is in the past but within the last 5 minutes, show it immediately
+      // This handles cases where the app was suspended/killed when the notification should have fired
+      else if (now.difference(notification.scheduledDate).inMinutes < 5) {
+        print('Showing recent past notification immediately: ${notification.id} scheduled for ${notification.scheduledDate}');
+        try {
+          await showNotification(
+            id: _convertIdTo32Bit(notification.id),
+            title: notification.title,
+            body: notification.body!,
+            payload: notification.payload,
+          );
+        } catch (e) {
+          print('Failed to show recent past notification ${notification.id}: $e');
         }
       } else {
-        print('Skipping past notification: ${notification.id} scheduled for ${notification.scheduledDate}');
+        print('Skipping old past notification: ${notification.id} scheduled for ${notification.scheduledDate}');
       }
     }
   }
@@ -304,6 +429,16 @@ class LocalNotificationService {
         _flutterLocalNotificationsPlugin
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
-    return await androidPlugin?.requestNotificationsPermission();
+    final notificationsGranted = await androidPlugin?.requestNotificationsPermission();
+    final exactAlarmsGranted = await androidPlugin?.requestExactAlarmsPermission();
+    return notificationsGranted == true && exactAlarmsGranted == true;
+  }
+
+  Future<bool?> canScheduleExactNotifications() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+    return await androidPlugin?.canScheduleExactNotifications();
   }
 }

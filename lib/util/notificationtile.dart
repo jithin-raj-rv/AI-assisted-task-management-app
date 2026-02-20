@@ -91,7 +91,7 @@ class _NotificationTileState extends State<NotificationTile> {
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.notification.scheduledDate)}',
+                  'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.notification.scheduledDate.toLocal())}',
                   style: TextStyle(
                     color: Colors.grey[400],
                     fontSize: 12,

@@ -1,139 +1,108 @@
+import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:to_do_list/models/scheduled_notification_model.dart';
+import 'package:to_do_list/Notification/local_notification_service.dart';
+import 'package:to_do_list/cache/scheduled_notification_cache.dart';
+import 'package:to_do_list/services/connectivity_service.dart';
+import 'package:to_do_list/services/foreground_service_manager.dart';
+import 'package:to_do_list/services/reminder_sync_service.dart';
 
-@pragma('vm:entry-point')
-void startCallback() {
-  FlutterForegroundTask.setTaskHandler(ReminderTaskHandler());
+void foregroundTaskCallback() {
+  FlutterForegroundTask.setTaskHandler(ForegroundTaskHandler());
 }
 
-class ReminderTaskHandler extends TaskHandler {
-  DateTime? _lastCheck;
-  
-  @override
-  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    print('[ForegroundTask] Reminder monitoring started');
-    _lastCheck = DateTime.now();
-  }
+class ForegroundTaskHandler extends TaskHandler {
+  LocalNotificationService? _localNotificationService;
+  ReminderSyncService? _reminderSyncService;
+  ScheduledNotificationCache? _cache;
+  ForegroundServiceManager? _foregroundServiceManager;
+  bool _isInitialized = false;
 
-  @override
-  void onRepeatEvent(DateTime timestamp) {
-    // Check for upcoming reminders
-    _checkUpcomingReminders();
-  }
-
-  @override
-  Future<void> onDestroy(DateTime timestamp, bool isForceStop) async {
-    print('[ForegroundTask] Reminder monitoring stopped (force: $isForceStop)');
-  }
-
-  @override
-  Future<void> onReceiveData(Object data) async {
-    print('[ForegroundTask] Received data: $data');
+  Future<void> _ensureInitialized() async {
+    if (_isInitialized) return;
+    
     try {
-      if (data is String && data == 'stop') {
-        print('[ForegroundTask] Stop button pressed (string)');
-        await FlutterForegroundTask.stopService();
-        return;
-      }
-
-      if (data is Map) {
-        final id = data['id'] ?? data['buttonId'] ?? data['action'];
-        if (id == 'stop') {
-          print('[ForegroundTask] Stop button pressed (map)');
-          await FlutterForegroundTask.stopService();
-          return;
-        }
-        
-        // Handle request to check reminders
-        if (id == 'check_reminders') {
-          _checkUpcomingReminders();
-        }
-      }
+      // Initialize Hive if not already done
+      await Hive.initFlutter();
+      
+      // Open required Hive boxes
+      await Hive.openBox('scheduled_notifications');
+      await Hive.openBox('settings');
+      
+      // Initialize services
+      _localNotificationService = LocalNotificationService();
+      await _localNotificationService!.init();
+      
+      _reminderSyncService = ReminderSyncService(ConnectivityService());
+      _cache = ScheduledNotificationCache();
+      _foregroundServiceManager = ForegroundServiceManager();
+      
+      _isInitialized = true;
+      print('[ForegroundTaskHandler] Initialization complete');
     } catch (e) {
-      print('[ForegroundTask] Error handling received data: $e');
+      print('[ForegroundTaskHandler] Initialization error: $e');
     }
   }
 
   @override
-  void onNotificationButtonPressed(String id) {
-    print('[ForegroundTask] onNotificationButtonPressed: $id');
+  Future<void> onStart(DateTime timestamp, TaskStarter taskStarter) async {
+    print('[ForegroundTaskHandler] onStart called');
+    await _ensureInitialized();
+    
+    try {
+      await _reminderSyncService!.syncFromSupabase();
+      final reminders = await _cache!.getAll();
+      
+      print('[ForegroundTaskHandler] Found ${reminders.length} reminders in cache');
+      
+      // Filter to only future reminders for scheduling
+      final now = DateTime.now();
+      final futureReminders = reminders.where((r) => r.scheduledDate.isAfter(now)).toList();
+      print('[ForegroundTaskHandler] Scheduling ${futureReminders.length} future reminders');
+      
+      await _localNotificationService!.rescheduleAllNotifications(futureReminders);
+      await _foregroundServiceManager!.updateNotificationText(futureReminders.length);
+    } catch (e) {
+      print('Error onStart foreground task: $e');
+    }
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp) async {
+    print('[ForegroundTaskHandler] onRepeatEvent called at $timestamp');
+    
+    try {
+      // Sync from Supabase to get latest reminders
+      await _reminderSyncService!.syncFromSupabase();
+      final reminders = await _cache!.getAll();
+      
+      print('[ForegroundTaskHandler] onRepeatEvent: Found ${reminders.length} reminders');
+      
+      // Filter to only future reminders
+      final now = DateTime.now();
+      final futureReminders = reminders.where((r) => r.scheduledDate.isAfter(now)).toList();
+      
+      // Reschedule all future notifications
+      await _localNotificationService!.rescheduleAllNotifications(futureReminders);
+      await _foregroundServiceManager!.updateNotificationText(futureReminders.length);
+    } catch (e) {
+      print('Error onRepeatEvent foreground task: $e');
+    }
+  }
+
+  @override
+  Future<void> onDestroy(DateTime timestamp, bool isUserStop) async {
+    print('Foreground task destroyed. isUserStop: $isUserStop');
+    if (isUserStop) {
+      final box = await Hive.openBox('settings');
+      await box.put('foreground_service_enabled', false);
+    }
+  }
+
+  @override
+  void onButtonPressed(String id) {
     if (id == 'stop') {
       FlutterForegroundTask.stopService();
     }
-  }
-
-  void _checkUpcomingReminders() {
-    try {
-      // Use a simple approach: send data to the main isolate
-      // The main isolate will handle the actual notification display
-      print('[ForegroundTask] Checking reminders at ${DateTime.now()}');
-      
-      // We send a broadcast to notify the main app to check reminders
-      // This works because the foreground task runs in a separate isolate
-      FlutterForegroundTask.updateService(
-        notificationTitle: 'Todo App Active',
-        notificationText: 'Monitoring reminders...',
-      );
-      
-      // Store a flag that the background task has run
-      // The main app can check this flag when it comes to foreground
-      _saveLastCheckTime();
-      
-    } catch (e) {
-      print('[ForegroundTask] Error checking reminders: $e');
-    }
-  }
-  
-  void _saveLastCheckTime() {
-    try {
-      // We can't directly write to Hive from background isolate
-      // Instead, we use FlutterForegroundTask to communicate
-      print('[ForegroundTask] Background check completed');
-    } catch (e) {
-      print('[ForegroundTask] Error saving check time: $e');
-    }
-  }
-}
-
-// Helper class to manage foreground task from main isolate
-class ForegroundTaskManager {
-  static Future<void> init() async {
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'your_channel_id',
-        channelName: 'Todo App Background',
-        channelDescription: 'App is running in background to monitor reminders',
-        channelImportance: NotificationChannelImportance.LOW,
-        priority: NotificationPriority.LOW,
-      ),
-      iosNotificationOptions: const IOSNotificationOptions(),
-      foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(60000), // Check every minute
-        autoRunOnBoot: false,
-        allowWakeLock: true,
-        allowWifiLock: true,
-      ),
-    );
-  }
-  
-  static Future<void> startService() async {
-    if (await FlutterForegroundTask.isRunningService == false) {
-      await FlutterForegroundTask.startService(
-        notificationTitle: 'Todo App Active',
-        notificationText: 'Monitoring your reminders in background',
-        callback: startCallback,
-      );
-      print('Foreground service started successfully');
-    }
-  }
-  
-  static Future<void> stopService() async {
-    await FlutterForegroundTask.stopService();
-    print('Foreground service stopped');
-  }
-  
-  static Future<bool> isRunning() async {
-    return await FlutterForegroundTask.isRunningService;
   }
 }

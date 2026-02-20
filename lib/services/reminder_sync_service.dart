@@ -179,7 +179,7 @@ class ReminderSyncService {
       'user_id': currentUser.id,
       'title': reminder.title,
       'body': reminder.body,
-      'scheduled_date': reminder.scheduledDate.toIso8601String(),
+      'scheduled_date': reminder.scheduledDate.toUtc().toIso8601String(),
       'payload': reminder.payload,
       'reminder_type': _reminderTypeToString(reminder.reminderType),
       'options': reminder.options,
@@ -200,7 +200,7 @@ class ReminderSyncService {
     final supabaseData = {
       'title': reminder.title,
       'body': reminder.body,
-      'scheduled_date': reminder.scheduledDate.toIso8601String(),
+      'scheduled_date': reminder.scheduledDate.toUtc().toIso8601String(),
       'payload': reminder.payload,
       'reminder_type': _reminderTypeToString(reminder.reminderType),
       'options': reminder.options,

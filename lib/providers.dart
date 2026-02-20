@@ -8,10 +8,12 @@ import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
 import 'package:to_do_list/services/auth_service.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
+import 'package:to_do_list/services/foreground_service_manager.dart';
+
+export 'package:flutter_riverpod/flutter_riverpod.dart';
+export 'package:to_do_list/services/foreground_service_manager.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
-
-
 
 // Auth Providers
 final authStateProvider = StreamProvider<AuthState>((ref) {

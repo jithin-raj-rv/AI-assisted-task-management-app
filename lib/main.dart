@@ -12,8 +12,8 @@ import 'package:to_do_list/View/onboarding_dialog.dart';
 import 'package:to_do_list/View/chatscreen.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
-import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import the new scheduled notification model
-import 'package:to_do_list/models/timer_prompt_model.dart'; // Import the new timer prompt model
+import 'package:to_do_list/models/scheduled_notification_model.dart';
+import 'package:to_do_list/models/timer_prompt_model.dart';
 import 'package:to_do_list/models/todo_model.dart';
 import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
@@ -21,16 +21,11 @@ import 'package:to_do_list/models/personality_trait_model.dart';
 import 'package:to_do_list/models/additional_info_model.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
-import 'package:to_do_list/cache/todo_cache.dart';
-import 'package:to_do_list/cache/goal_cache.dart';
-import 'package:to_do_list/cache/scheduled_notification_cache.dart';
-import 'package:to_do_list/cache/personality_cache.dart';
-import 'package:to_do_list/cache/additional_info_cache.dart';
-import 'package:to_do_list/providers.dart'; // Import providers
-import 'package:to_do_list/sync_providers.dart'; // Import sync providers
-import 'package:to_do_list/services/connectivity_service.dart'; // Import connectivity service
-import 'package:to_do_list/services/supabase_gemini_service.dart'; // Import supabase gemini service
 import 'package:to_do_list/config/supabase_config.dart';
+import 'package:to_do_list/services/supabase_gemini_service.dart';
+import 'package:to_do_list/providers.dart';
+import 'package:to_do_list/sync_providers.dart';
+import 'package:to_do_list/services/foreground_service_manager.dart';
 
 final localNotificationService = LocalNotificationService();
 
@@ -174,34 +169,18 @@ void main() async {
     print('Notification permission denied');
   } else {
     print('Notification permission granted');
-
-    // Wait a bit for channel creation, then test notification
-    await Future.delayed(const Duration(seconds: 2));
-
-    try {
-      print('Attempting to show test notification...');
-      await localNotificationService.showNotification(
-        id: 999,
-        title: 'Test Notification',
-        body: 'Notifications are working! Time: ${DateTime.now()}',
-      );
-      print('Test notification sent successfully');
-
-      // Also try with a different ID and slight delay
-      await Future.delayed(const Duration(seconds: 1));
-      await localNotificationService.showNotification(
-        id: 1000,
-        title: 'Second Test',
-        body: 'Another notification test',
-      );
-      print('Second test notification sent');
-    } catch (e) {
-      print('Test notification failed: $e');
-    }
+    
+    // Check if exact alarms can be scheduled
+    final canScheduleExact = await localNotificationService.canScheduleExactNotifications();
+    print('Can schedule exact notifications: $canScheduleExact');
+    
+    
   }
 
   // Reschedule notifications (must be after init to ensure timezone is initialized)
+  // This should be called regardless of permission status to ensure existing notifications work
   await rescheduleNotifications();
+  
 
   await Supabase.initialize(
     url: supabaseUrl,
@@ -214,17 +193,21 @@ void main() async {
       channelId: 'foreground_service',
       channelName: 'Todo App Background',
       channelDescription: 'App is running in background to monitor reminders',
-      channelImportance: NotificationChannelImportance.LOW,
-      priority: NotificationPriority.LOW,
+      channelImportance: NotificationChannelImportance.HIGH,
+      priority: NotificationPriority.HIGH,
     ),
     iosNotificationOptions: const IOSNotificationOptions(),
     foregroundTaskOptions: ForegroundTaskOptions(
-      eventAction: ForegroundTaskEventAction.nothing(),
-      autoRunOnBoot: false,
+      eventAction: ForegroundTaskEventAction.repeat(60000), // Check every 60 seconds
+      autoRunOnBoot: true,
       allowWakeLock: true,
       allowWifiLock: true,
     ),
   );
+
+  // Initialize foreground service manager (restores service if was previously enabled)
+  final foregroundServiceManager = ForegroundServiceManager();
+  await foregroundServiceManager.init();
 
   // Listen to auth state changes to (re)attach realtime subscriptions reliably
   Supabase.instance.client.auth.onAuthStateChange.listen((event) {
@@ -315,10 +298,29 @@ class MyApp extends ConsumerStatefulWidget {
   ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends ConsumerState<MyApp> {
+class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // Add lifecycle observer to reschedule notifications when app resumes
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      print('[AppLifecycle] App resumed - checking notifications');
+      // Reschedule all notifications when app resumes
+      localNotificationService.rescheduleAllNotifications(
+        Hive.box<ScheduledNotification>('scheduled_notifications').values.toList(),
+      );
+    }
   }
 
   @override

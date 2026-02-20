@@ -245,7 +245,7 @@ Future<void> showTimerPromptDialog({
                     spacing: 8,
                     children: scheduledDateTimes
                       .map((dt) => Chip(
-                            label: Text(DateFormat('MMM dd, HH:mm').format(dt)),
+                            label: Text('${DateFormat('MMM dd, HH:mm').format(dt.toLocal())} (IST)'),
                             onDeleted: () => setState(() => scheduledDateTimes.remove(dt)),
                           ))
                       .toList(),
@@ -265,15 +265,15 @@ Future<void> showTimerPromptDialog({
 
                 if (repeatOption != 'Never') {
                   if (selectedTime == null) return;
+                  final now = DateTime.now();
                   final dt = DateTime(
-                    DateTime.now().year,
-                    DateTime.now().month,
-                    DateTime.now().day,
+                    now.year,
+                    now.month,
+                    now.day,
                     selectedTime!.hour,
                     selectedTime!.minute,
-                  );
+                  ).toUtc();
 
-                  final now = DateTime.now();
                   final userId = ProviderScope.containerOf(context).read(currentUserProvider)?.id;
                   final TimerPrompt prompt = TimerPrompt(
                     id: existingPrompt?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -288,7 +288,8 @@ Future<void> showTimerPromptDialog({
 
                   await onSave(prompt);
                 } else {
-                  final List<DateTime> finalTimes = List.from(scheduledDateTimes);
+                  final List<DateTime> finalTimes =
+                      scheduledDateTimes.map((dt) => dt.toUtc()).toList();
                   if (finalTimes.isEmpty && selectedDate != null && selectedTime != null) {
                     finalTimes.add(DateTime(
                       selectedDate!.year,
@@ -296,7 +297,7 @@ Future<void> showTimerPromptDialog({
                       selectedDate!.day,
                       selectedTime!.hour,
                       selectedTime!.minute,
-                    ));
+                    ).toUtc());
                   }
 
                   if (existingPrompt != null) {

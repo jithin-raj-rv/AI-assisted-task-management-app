@@ -131,7 +131,7 @@ class TimerPromptSyncService {
       'id': prompt.id,
       'user_id': currentUser.id,
       'prompt': prompt.prompt,
-      'scheduled_time': prompt.scheduledTime.toIso8601String(),
+      'scheduled_time': prompt.scheduledTime.toUtc().toIso8601String(),
       'is_recurring': prompt.isRecurring,
       'weekdays': prompt.weekdays,
       'response': prompt.response,
@@ -150,7 +150,7 @@ class TimerPromptSyncService {
 
     final supabaseData = {
       'prompt': prompt.prompt,
-      'scheduled_time': prompt.scheduledTime.toIso8601String(),
+      'scheduled_time': prompt.scheduledTime.toUtc().toIso8601String(),
       'is_recurring': prompt.isRecurring,
       'weekdays': prompt.weekdays,
       'response': prompt.response,

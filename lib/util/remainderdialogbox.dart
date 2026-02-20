@@ -241,9 +241,11 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
                   child: Wrap(
                     spacing: 8.0,
                     children: _scheduledDateTimes.map((dateTime) {
+                      final istTime = dateTime.toLocal();
+                      final formattedTime = DateFormat('MMM dd, HH:mm').format(istTime);
                       return Chip(
                         label: Text(
-                          DateFormat('MMM dd, HH:mm').format(dateTime),
+                          '$formattedTime (IST)',
                           style: const TextStyle(fontSize: 12),
                         ),
                         onDeleted: () {
@@ -385,7 +387,7 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
                               _selectedReminderDate!.day,
                             );
                          }
-                         finalDateTimes.add(dt);
+                         finalDateTimes.add(dt.toUtc());
                       }
 
                       widget.onSave(
