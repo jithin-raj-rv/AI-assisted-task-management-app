@@ -8,7 +8,8 @@ const corsHeaders = {
 }
 
 interface FunctionArgs {
-  timerPromptId: string
+  userInput: string
+  chatHistory?: Array<{role: 'user' | 'model', content: string}>
 }
 
 serve(async (req) => {
@@ -18,71 +19,131 @@ serve(async (req) => {
   }
 
   try {
-    const { timerPromptId }: FunctionArgs = await req.json()
+    const { userInput, chatHistory }: FunctionArgs = await req.json()
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-    if (!timerPromptId) {
+    // Get JWT from Authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'timerPromptId is required' }),
+        JSON.stringify({ error: 'Unauthorized - Missing Authorization header' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
+          status: 401,
         }
       )
     }
 
-    // Create Supabase client with service role
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseServiceKey,
-      {
-        auth: {
-          persistSession: false,
-        },
+    // Extract and validate JWT token manually
+    const jwt = authHeader.replace('Bearer ', '')
+    let userId: string
+
+    try {
+      // Decode JWT payload
+      const payload = JSON.parse(atob(jwt.split('.')[1]))
+      userId = payload.sub
+
+      if (!userId) {
+        throw new Error('Invalid JWT payload - missing sub field')
       }
-    )
 
-    // Fetch the timer prompt
-    const { data: timerPrompt, error: promptError } = await supabaseClient
-      .from('timer_prompts')
-      .select('*')
-      .eq('id', timerPromptId)
-      .single()
+      // Basic token validation - check expiry
+      const now = Math.floor(Date.now() / 1000)
+      if (payload.exp && payload.exp < now) {
+        throw new Error('Token expired')
+      }
 
-    if (promptError || !timerPrompt) {
-      throw new Error('Failed to fetch timer prompt')
+    } catch (error) {
+      console.error('JWT validation error:', error)
+      return new Response(
+        JSON.stringify({ error: 'Session expired, Please sign in again.' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        }
+      )
     }
 
-    const userId = timerPrompt.user_id
+    // Initialize Supabase client with service role key for database operations
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
 
     // Fetch user data
-    const [todosRes, goalsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
+    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
       supabaseClient.from('todos').select('*').eq('user_id', userId),
       supabaseClient.from('goals').select('*').eq('user_id', userId),
+      supabaseClient.from('goal_steps').select('*').eq('user_id', userId),
       supabaseClient.from('timer_prompts').select('*').eq('user_id', userId),
       supabaseClient.from('user_feedback').select('*').eq('user_id', userId),
       supabaseClient.from('personality_traits').select('*').eq('user_id', userId),
       supabaseClient.from('additional_info').select('*').eq('user_id', userId)
     ])
 
-    if (todosRes.error || goalsRes.error || timerPromptsRes.error || personalityRes.error || additionalInfoRes.error) {
+    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error) {
       throw new Error('Failed to fetch user data')
     }
 
     const todolist = todosRes.data || []
     const goals = goalsRes.data || []
+    const goalSteps = goalStepsRes.data || []
     const timerPrompts = timerPromptsRes.data || []
     const feedback = feedbackRes.data || []
     const personalityTraits = personalityRes.data || []
     const additionalInfo = additionalInfoRes.data || []
 
-    // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') || '')
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    // Create system prompt for systemInstruction
+    const systemPrompt =`You have access to User todolist: ${JSON.stringify(todolist)}
+User goals: ${JSON.stringify(goals)}
+User goal steps: ${JSON.stringify(goalSteps)}
+User timer prompts: ${JSON.stringify(timerPrompts)}
+User feedback: ${JSON.stringify(feedback)}
+User personality traits: ${JSON.stringify(personalityTraits)}
+User additional info: ${JSON.stringify(additionalInfo)}
 
-    // Define tools (same as process-prompt)
+You are a professional Personal manager. When a user mentions colors, call updateAppColors.
+For todos: use addTodo, deleteTodo, modifyTodo., use this only to manage daily todos for the user, analysing the user goals and steps
+For goals: addGoal, deleteGoal, modifyGoal.
+For goal steps: addGoalStep, deleteGoalStep, modifyGoalStep., use goals,goal steps to help user define their long term goals, and the journey to complete the goal
+For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt., use this to send scheduled ai prompts to update todos based on goals,goal steps,and it's importance
+For feedback: addFeedback,deleteFeedback,modifyFeedback., use this to access user feedback and remove unwanted feedback after using them.
+For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait., use this to constantly know the user and update about their personality to better help them manage their tasks.
+For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo., use this for any other additional information about the user for better scheduling to be in additional info.
+For reminders: use addReminder, deleteReminder, modifyReminder., use this to schedule reminders to user, to get user feedback, which is stored in feedback, to start conversation with ai from reminders.
+
+Help the user figure out of how to achieve goals if they are confused.
+Collect user info and store in personality, additional info as necessary.
+when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
+When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.`
+    // Build conversation history (only user/model messages, no system messages)
+    let conversationHistory = chatHistory
+      ?.filter(msg => msg.role && (msg.role === 'user' || msg.role === 'model') && msg.content)
+      ?.slice(-10) // Limit to last 10 messages
+      ?.map(msg => ({
+        role: msg.role,
+        parts: [{ text: msg.content }]
+      })) || []
+
+    // Ensure history starts with 'user' (skip any leading 'model' messages)
+    let startIndex = 0;
+    while (startIndex < conversationHistory.length && conversationHistory[startIndex].role === 'model') {
+      startIndex++;
+    }
+    conversationHistory = conversationHistory.slice(startIndex);
+
+    // Initialize Gemini with systemInstruction instead of system message in history
+    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') || '')
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt
+    })
+
+    // Define tools
     const themeTool = {
       functionDeclarations: [{
         name: 'updateAppColors',
@@ -116,8 +177,8 @@ serve(async (req) => {
           type: 'object',
           properties: {
             task: { type: 'string', description: 'The task to be done.' },
-            importance: { type: 'string', description: 'The importance level.' },
-            urgency: { type: 'string', description: 'The urgency level.' },
+            importance: { type: 'string', description: 'The importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'The urgency level.',enum: ['URGENT', 'NOT URGENT']},
             description: { type: 'string', description: 'Task description.' },
             dueDate: { type: 'string', description: 'Due date in ISO format.' },
             isCompleted: { type: 'boolean', description: 'Whether the task is completed.' }
@@ -142,8 +203,8 @@ serve(async (req) => {
           properties: {
             taskId: { type: 'string', description: 'The ID of the task to modify.' },
             newTask: { type: 'string', description: 'The updated task.' },
-            newImportance: { type: 'string' },
-            newUrgency: { type: 'string' },
+            newImportance: { type: 'string', description: 'The updated importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string',description: 'The updated urgency level.',enum: ['URGENT', 'NOT URGENT']},
             newDescription: { type: 'string' },
             newDueDate: { type: 'string' },
             newIsCompleted: { type: 'boolean' }
@@ -163,7 +224,9 @@ serve(async (req) => {
             title: { type: 'string', description: 'The goal title.' },
             description: { type: 'string', description: 'Goal description.' },
             targetDate: { type: 'string', description: 'Target date in ISO format.' },
-            isCompleted: { type: 'boolean', description: 'Whether the goal is completed.' }
+            isCompleted: { type: 'boolean', description: 'Whether the goal is completed.' },
+            importance: { type: 'string', description: 'The importance level of goal',enum:['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'The urgency level of goal',enum:['URGENT', 'NOT URGENT'] }
           },
           required: ['title']
         }
@@ -187,9 +250,52 @@ serve(async (req) => {
             newTitle: { type: 'string', description: 'The updated title.' },
             newDescription: { type: 'string' },
             newTargetDate: { type: 'string' },
-            newIsCompleted: { type: 'boolean' }
+            newIsCompleted: { type: 'boolean' },
+            newImportance: { type: 'string', description: 'The updated importance level.',enum:['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string', description: 'The updated urgency level.',enum:['URGENT','NOT URGENT'] }
           },
           required: ['goalId', 'newTitle']
+        }
+      }]
+    }
+
+    const goalStepTool = {
+      functionDeclarations: [{
+        name: 'addGoalStep',
+        description: 'Adds a new step to a goal.',
+        parameters: {
+          type: 'object',
+          properties: {
+            goalId: { type: 'string', description: 'The ID of the goal this step belongs to.' },
+            title: { type: 'string', description: 'The step title.' },
+            description: { type: 'string', description: 'Step description.' },
+            orderIndex: { type: 'number', description: 'The order index of the step.' }
+          },
+          required: ['goalId', 'title']
+        }
+      }, {
+        name: 'deleteGoalStep',
+        description: 'Deletes a goal step.',
+        parameters: {
+          type: 'object',
+          properties: {
+            stepId: { type: 'string', description: 'The ID of the step to delete.' }
+          },
+          required: ['stepId']
+        }
+      }, {
+        name: 'modifyGoalStep',
+        description: 'Modifies a goal step.',
+        parameters: {
+          type: 'object',
+          properties: {
+            stepId: { type: 'string', description: 'The ID of the step to modify.' },
+            newTitle: { type: 'string', description: 'The updated title.' },
+            newDescription: { type: 'string' },
+            newIsCompleted: { type: 'boolean', description: 'Whether the step is completed.' },
+            newOrderIndex: { type: 'number', description: 'The updated order index.' }
+          },
+          required: ['stepId', 'newTitle']
         }
       }]
     }
@@ -249,6 +355,27 @@ serve(async (req) => {
             feedback: { type: 'string', description: 'The feedback text.' }
           },
           required: ['feedback']
+        }
+      }, {
+        name: 'deleteFeedback',
+        description: 'Deletes user feedback.',
+        parameters: {
+          type: 'object',
+          properties: {
+            feedbackId: { type: 'string', description: 'The ID of the feedback to delete.' }
+          },
+          required: ['feedbackId']
+        }
+      }, {
+        name: 'modifyFeedback',
+        description: 'Modifies user feedback.',
+        parameters: {
+          type: 'object',
+          properties: {
+            feedbackId: { type: 'string', description: 'The ID of the feedback to modify.' },
+            newFeedback: { type: 'string', description: 'The updated feedback text.' }
+          },
+          required: ['feedbackId', 'newFeedback']
         }
       }]
     }
@@ -380,32 +507,13 @@ serve(async (req) => {
 
     const chat = model.startChat({
       generationConfig,
-      history: [],
-      tools: [themeTool, todoTool, goalTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
+      history: conversationHistory,
+      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
     })
 
     const result = await chat.sendMessage([
       {
-        text: `You have access to User todolist: ${JSON.stringify(todolist)}
-User goals: ${JSON.stringify(goals)}
-User timer prompts: ${JSON.stringify(timerPrompts)}
-User feedback: ${JSON.stringify(feedback)}
-User personality traits: ${JSON.stringify(personalityTraits)}
-User additional info: ${JSON.stringify(additionalInfo)}
-
-You are a professional Personal manager. When a user mentions colors, call updateAppColors.
-For todos: use addTodo, deleteTodo, modifyTodo.
-For goals: addGoal, deleteGoal, modifyGoal.
-For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt.
-For feedback: use addFeedback.
-For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait.
-For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo.
-For reminders: use addReminder, deleteReminder, modifyReminder.
-
-Process this timer prompt automatically and execute the appropriate actions.`
-      },
-      {
-        text: timerPrompt.prompt
+        text: userInput
       }
     ])
 
@@ -455,7 +563,9 @@ Process this timer prompt automatically and execute the appropriate actions.`
             title: args.title || 'Untitled Goal',
             description: args.description || '',
             target_date: args.targetDate,
-            is_completed: args.isCompleted || false
+            is_completed: args.isCompleted || false,
+            importance: args.importance || 'NOT IMPORTANT',
+            urgency: args.urgency || 'NOT URGENT'
           })
           if (addGoalError) throw addGoalError
           responseText += `Added goal: ${args.title || 'Untitled Goal'}\n`
@@ -470,10 +580,40 @@ Process this timer prompt automatically and execute the appropriate actions.`
             title: args.newTitle,
             description: args.newDescription,
             target_date: args.newTargetDate,
-            is_completed: args.newIsCompleted
+            is_completed: args.newIsCompleted,
+            importance: args.newImportance,
+            urgency: args.newUrgency
           }).eq('id', args.goalId).eq('user_id', userId)
           if (modifyGoalError) throw modifyGoalError
           responseText += `Modified goal: ${args.newTitle}\n`
+          break
+        case 'addGoalStep':
+          const { error: addStepError } = await supabaseClient.from('goal_steps').insert({
+            id: Date.now().toString(),
+            user_id: userId,
+            goal_id: args.goalId,
+            title: args.title || 'Untitled Step',
+            description: args.description || '',
+            order_index: args.orderIndex || 0,
+            is_completed: false
+          })
+          if (addStepError) throw addStepError
+          responseText += `Added goal step: ${args.title || 'Untitled Step'}\n`
+          break
+        case 'deleteGoalStep':
+          const { error: deleteStepError } = await supabaseClient.from('goal_steps').delete().eq('id', args.stepId).eq('user_id', userId)
+          if (deleteStepError) throw deleteStepError
+          responseText += `Deleted goal step\n`
+          break
+        case 'modifyGoalStep':
+          const { error: modifyStepError } = await supabaseClient.from('goal_steps').update({
+            title: args.newTitle,
+            description: args.newDescription,
+            is_completed: args.newIsCompleted,
+            order_index: args.newOrderIndex
+          }).eq('id', args.stepId).eq('user_id', userId)
+          if (modifyStepError) throw modifyStepError
+          responseText += `Modified goal step: ${args.newTitle}\n`
           break
         case 'addTimerPrompt':
           const { error: addTimerError } = await supabaseClient.from('timer_prompts').insert({
@@ -514,6 +654,18 @@ Process this timer prompt automatically and execute the appropriate actions.`
           })
           if (addFeedbackError) throw addFeedbackError
           responseText += `Added feedback\n`
+          break
+        case 'deleteFeedback':
+          const { error: deleteFeedbackError } = await supabaseClient.from('user_feedback').delete().eq('id', args.feedbackId).eq('user_id', userId)
+          if (deleteFeedbackError) throw deleteFeedbackError
+          responseText += `Deleted feedback\n`
+          break
+        case 'modifyFeedback':
+          const { error: modifyFeedbackError } = await supabaseClient.from('user_feedback').update({
+            feedback: args.newFeedback
+          }).eq('id', args.feedbackId).eq('user_id', userId)
+          if (modifyFeedbackError) throw modifyFeedbackError
+          responseText += `Modified feedback\n`
           break
         case 'updateAppColors':
           // Handle theme update - this might not be stored in DB, but could be handled separately
@@ -570,7 +722,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             scheduled_date: args.scheduledDate,
             payload: args.title || 'Untitled Reminder', // Using title as payload for now
             reminder_type: args.reminderType || 'basic',
-            options: args.options ? JSON.stringify(args.options) : null,
+            options: args.options || null, // Store as native array, not JSON string
             expected_answer: args.expectedAnswer || '',
             ai_prompt: args.aiPrompt || ''
           })
@@ -589,7 +741,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             scheduled_date: args.newScheduledDate,
             payload: args.newTitle, // Update payload as well
             reminder_type: args.newReminderType,
-            options: args.newOptions ? JSON.stringify(args.newOptions) : null,
+            options: args.newOptions || null, // Store as native array, not JSON string
             expected_answer: args.newExpectedAnswer,
             ai_prompt: args.newAiPrompt,
             updated_at: new Date().toISOString()
@@ -600,31 +752,8 @@ Process this timer prompt automatically and execute the appropriate actions.`
       }
     }
 
-    // Update the timer prompt with response and mark as sent
-    const { error: updateError } = await supabaseClient
-      .from('timer_prompts')
-      .update({
-        response: responseText || response.text(),
-        sent: true
-      })
-      .eq('id', timerPromptId)
-
-    if (updateError) throw updateError
-
-    // If this is a recurring timer prompt, reschedule for next occurrence
-    if (timerPrompt.is_recurring) {
-      const { error: rescheduleError } = await supabaseClient.rpc('reschedule_recurring_timer_prompt', {
-        timer_prompt_id: timerPromptId
-      })
-
-      if (rescheduleError) {
-        console.error('Failed to reschedule recurring timer prompt:', rescheduleError)
-        // Don't throw error here as the main execution was successful
-      }
-    }
-
     return new Response(
-      JSON.stringify({ success: true, response: responseText || response.text() }),
+      JSON.stringify({ response: responseText || response.text() }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

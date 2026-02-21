@@ -113,10 +113,6 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         title: Tittlegradient(text: 'My Goals'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.emoji_events),
-            onPressed: () {},
-          ),
-          IconButton(
             icon: const Icon(Icons.add),
             onPressed: _addGoal,
           ),
@@ -143,6 +139,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 );
               },
             ),
+                  floatingActionButton: 
+           FloatingActionButton(
+              onPressed: () => _addGoal(),
+              child: const Icon(Icons.add),
+            )
     );
   }
 }

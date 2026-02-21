@@ -334,7 +334,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
           ? ThemeData.dark().copyWith(
               appBarTheme: AppBarTheme(
                 backgroundColor: appTheme.background,
-                foregroundColor: appTheme.primaryGradient1,
+                foregroundColor: appTheme.actionGradientStart,
                 titleTextStyle: const TextStyle(fontSize: 40,color: Colors.white),
               ),
               scaffoldBackgroundColor: appTheme.background, // Set background for dark mode
@@ -342,7 +342,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
           : ThemeData.light().copyWith(
               appBarTheme: AppBarTheme(
                 backgroundColor: appTheme.background,
-                foregroundColor: appTheme.primaryGradient1,
+                foregroundColor: appTheme.actionGradientStart,
                 titleTextStyle: const TextStyle(fontSize: 40, color: Colors.white),
                 
               ),

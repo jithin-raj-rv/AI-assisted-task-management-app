@@ -98,7 +98,7 @@ class _ReminderPageState extends ConsumerState<ReminderPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addReminder,
-        backgroundColor: appTheme.primaryGradient1,
+        backgroundColor: appTheme.actionGradientStart,
         child: Icon(Icons.add, color: Colors.white),
       ),
     );

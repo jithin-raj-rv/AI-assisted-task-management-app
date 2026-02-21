@@ -207,7 +207,7 @@ void _editTask(Todo todo) {
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: appTheme.primary,
-        unselectedItemColor: appTheme.primaryGradient1.withAlpha(150),
+        unselectedItemColor: appTheme.actionGradientStart.withAlpha(150),
       ),
     );
   }

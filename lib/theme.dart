@@ -7,30 +7,32 @@ class AppThemeState {
   final Color primary;
   final Color secondary;
   final Color tertiary;
+  final Color quatenery;
   final Color background;
-  final Color primaryGradient1;
-  final Color primaryGradient2;
-  final Color secondaryGradient1;
-  final Color secondaryGradient2;
-  final Color tertiaryGradient1;
-  final Color tertiaryGradient2;
-  final Color backgroundGradient1;
-  final Color backgroundGradient2;
+  final Color actionGradientStart;
+  final Color actionGradientEnd;
+  final Color textGradientStart;
+  final Color textGradientEnd;
+  final Color accentGradientStart;
+  final Color accentGradientEnd;
+  final Color backgroundGradientStart;
+  final Color backgroundGradientEnd;
   final bool isDarkMode; // Added to track dark mode
 
   AppThemeState({
     required this.primary,
     required this.secondary,
     required this.tertiary,
+    required this.quatenery,
     required this.background,
-    required this.primaryGradient1,
-    required this.primaryGradient2,
-    required this.secondaryGradient1,
-    required this.secondaryGradient2,
-    required this.tertiaryGradient1,
-    required this.tertiaryGradient2,
-    required this.backgroundGradient1,
-    required this.backgroundGradient2,
+    required this.actionGradientStart,
+    required this.actionGradientEnd,
+    required this.textGradientStart,
+    required this.textGradientEnd,
+    required this.accentGradientStart,
+    required this.accentGradientEnd,
+    required this.backgroundGradientStart,
+    required this.backgroundGradientEnd,
     this.isDarkMode = false,
   });
 
@@ -40,15 +42,16 @@ class AppThemeState {
       primary: Colors.blue,
       secondary: Colors.purpleAccent,
       tertiary: Colors.orange,
+      quatenery: Colors.purpleAccent,
       background: Colors.white,
-      primaryGradient1: Colors.purple,
-      primaryGradient2: Colors.lightBlueAccent,
-      secondaryGradient1: Colors.lightBlue,
-      secondaryGradient2: Colors.purpleAccent,
-      tertiaryGradient1: Colors.orange,
-      tertiaryGradient2: Colors.orangeAccent,
-      backgroundGradient1: Colors.white,
-      backgroundGradient2: Colors.blueGrey,
+      actionGradientStart: Colors.purple,
+      actionGradientEnd: Colors.lightBlueAccent,
+      textGradientStart: Colors.lightBlue,
+      textGradientEnd: Colors.purpleAccent,
+      accentGradientStart: Colors.blueGrey,
+      accentGradientEnd: Colors.purple,
+      backgroundGradientStart: Colors.cyanAccent,
+      backgroundGradientEnd: Colors.blueGrey,
       isDarkMode: false,
     );
   }
@@ -57,17 +60,18 @@ class AppThemeState {
   factory AppThemeState.dark() {
     return AppThemeState(
       primary: Colors.deepPurple,
-      secondary: Colors.deepPurple,
+      secondary: Colors.teal,
       tertiary: Colors.indigo,
+      quatenery: Colors.pink,
       background: Colors.black,
-      primaryGradient1: Colors.teal,
-      primaryGradient2: Colors.purpleAccent,
-      secondaryGradient1: Colors.purpleAccent,
-      secondaryGradient2: Colors.tealAccent,
-      tertiaryGradient1: Colors.indigo,
-      tertiaryGradient2: Colors.indigoAccent,
-      backgroundGradient1: Colors.black,
-      backgroundGradient2: Colors.deepPurple,
+      actionGradientStart: Colors.teal,
+      actionGradientEnd: Colors.purpleAccent,
+      textGradientStart: Colors.purpleAccent,
+      textGradientEnd: Colors.teal,
+      accentGradientStart: Colors.purpleAccent,
+      accentGradientEnd: Colors.tealAccent,
+      backgroundGradientStart: Colors.purple,
+      backgroundGradientEnd: Colors.blue,
       isDarkMode: true,
     );
   }

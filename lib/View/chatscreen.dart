@@ -144,7 +144,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           style: TextStyle(
               fontSize: 25.0,
               fontWeight: FontWeight.bold,
-              color: appTheme.primaryGradient1),
+              color: appTheme.actionGradientStart),
         ),
         actions: [
           IconButton(

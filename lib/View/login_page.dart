@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/providers.dart';
+import 'package:to_do_list/util/gradienttextfield.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
+import 'package:to_do_list/util/tittlegradient.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -55,39 +58,80 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Scaffold(
       backgroundColor: appTheme.background,
       appBar: AppBar(
+        toolbarHeight: 100,
         backgroundColor: appTheme.background,
         elevation: 0,
-        title: Text(_isSignUp ? 'Sign Up' : 'Sign In', style: TextStyle(color: appTheme.primaryGradient1)),
-      ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 50),
+          child: _isSignUp ? Tittlegradient(text: "Sign Up") : Tittlegradient(text: "Sign In" ),
+        ),),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
+
+
+                   Gradienttextfield(controller: _emailController, text: "Email"),
+
+
             const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
+
+                  Gradienttextfield(controller: _passwordController, text: "Password",obscureText: true,),
+
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _authenticate,
-                child: _loading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+              child: 
+                ElevatedButton(
+                  style: ButtonStyle(
+                    padding: WidgetStateProperty.all(EdgeInsets.zero),
+                    backgroundColor: WidgetStateProperty.all(Colors.transparent),
+                    shadowColor: WidgetStateProperty.all(Colors.transparent),
+                    elevation: WidgetStateProperty.all(0),
+                  ),
+                  onPressed: _loading ? null : _authenticate,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [appTheme.accentGradientStart, appTheme.accentGradientEnd],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: _loading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : _isSignUp
+                              ? Smalltextgradient(text: "Sign Up", fontsize: 16)
+                              : Smalltextgradient(text: "Sign In", fontsize: 16),
+                    ),
+                  ),
+                )
               ),
-            ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => setState(() => _isSignUp = !_isSignUp),
-              child: Text(_isSignUp ? 'Already have an account? Sign In' : 'Don\'t have an account? Sign Up'),
+              child: _isSignUp ? Smalltextgradient(text: "Already have an account? Sign In", fontsize: 16) : Smalltextgradient(text: 'Don\'t have an account? Sign Up',fontsize: 16),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical :8,horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Icon(Icons.abc_sharp,size: 35,),
+                  Icon(Icons.abc_sharp,size: 35,),
+                  Icon(Icons.abc_sharp,size: 35,),
+                ]),
+            )
           ],
         ),
       ),

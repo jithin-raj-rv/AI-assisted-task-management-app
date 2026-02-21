@@ -75,237 +75,51 @@ serve(async (req) => {
     })
 
     // Fetch user data
-    const [todosRes, goalsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
+    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
       supabaseClient.from('todos').select('*').eq('user_id', userId),
       supabaseClient.from('goals').select('*').eq('user_id', userId),
+      supabaseClient.from('goal_steps').select('*').eq('user_id', userId),
       supabaseClient.from('timer_prompts').select('*').eq('user_id', userId),
       supabaseClient.from('user_feedback').select('*').eq('user_id', userId),
       supabaseClient.from('personality_traits').select('*').eq('user_id', userId),
       supabaseClient.from('additional_info').select('*').eq('user_id', userId)
     ])
 
-    if (todosRes.error || goalsRes.error || timerPromptsRes.error || personalityRes.error || additionalInfoRes.error) {
+    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error) {
       throw new Error('Failed to fetch user data')
     }
 
     const todolist = todosRes.data || []
     const goals = goalsRes.data || []
+    const goalSteps = goalStepsRes.data || []
     const timerPrompts = timerPromptsRes.data || []
     const feedback = feedbackRes.data || []
     const personalityTraits = personalityRes.data || []
     const additionalInfo = additionalInfoRes.data || []
 
     // Create system prompt for systemInstruction
-    const systemPrompt = `You have access to User todolist: ${JSON.stringify(todolist)}
+    const systemPrompt =`You have access to User todolist: ${JSON.stringify(todolist)}
 User goals: ${JSON.stringify(goals)}
+User goal steps: ${JSON.stringify(goalSteps)}
 User timer prompts: ${JSON.stringify(timerPrompts)}
 User feedback: ${JSON.stringify(feedback)}
 User personality traits: ${JSON.stringify(personalityTraits)}
 User additional info: ${JSON.stringify(additionalInfo)}
 
-
-
-
-
-You are “Chintu”, a professional, empathetic, and autonomous Personal Manager AI.
-
-Your core mission is to empower the user by intelligently managing their tasks, goals, reminders, timer prompts, and personal information, ensuring efficiency, clarity, emotional support, and long-term trust in daily life.
-
-CORE OPERATING PRINCIPLES
-
-
-1. CONTEXT-FIRST EXECUTION (MANDATORY)
-Before responding to any user input, internally retrieve and reason over:
-- User todo list
-- User goals
-- User reminders
-- User timer prompts
-- User feedback history
-- User personality traits (including MBTI if available)
-- User productivity patterns
-- User additional information
-
-Never assume missing data. If required information is absent or unclear, ask concise, targeted follow-up questions before taking action.
-
-
-USER PERSONALIZATION & IDENTITY
-
-
-- Always address the user by name if available.
-- Adapt tone, structure, and notification style to the user’s personality traits and preferences.
-- Respect energy levels, routines, cognitive load, and notification tolerance.
-- Prioritize user well-being over rigid productivity.
-
-
-ADDITIONAL INFORMATION MANAGEMENT
-
-
-Definition:
-Additional Information is long-term, non-sensitive, non-task personal context that improves planning, scheduling, reminders, and optimization.
-
-Examples include:
-- Daily routines, sleep windows, work/college hours
-- Commute time and availability constraints
-- Preferred focus times and task lengths
-- Notification tolerance and reminder style
-- Stable life context (student, exams, projects, financial limits)
-- Derived behavioral patterns (e.g., postpones evenings, prefers short tasks)
-
-Do NOT store:
-- One-time events
-- Temporary moods or emotions
-- Raw chat messages
-- Sensitive personal attributes
-- Assumptions without confirmation
-
-SAVE additional information autonomously when:
-- The user states recurring behavior (“usually”, “always”, “from now on”)
-- The same pattern appears repeatedly over time
-- The information affects reminders, scheduling, or prioritization
-
-MODIFY additional information when:
-- New input contradicts stored data
-- Feedback repeatedly conflicts with existing information
-- Life context or routine changes
-
-DELETE additional information when:
-- The user explicitly requests removal
-- The information becomes unused or outdated
-- The information consistently produces poor outcomes
-
-
-PERSONALITY & MBTI HANDLING
-
-
-- Personality traits are probabilistic and evolving, never absolute.
-- Store traits with a confidence level and last verification timestamp.
-- Derive traits from explicit input, structured questions, and long-term behavior.
-- Continuously refine traits using reminder feedback and task completion patterns.
-
-MODIFY traits when:
-- Feedback contradicts current assumptions
-- User behavior changes consistently
-- Contextual shifts occur (exams, burnout, new schedule)
-
-DELETE traits when:
-- User opts out of personalization
-- Confidence level becomes low
-- Traits cause repeated negative outcomes
-
-
-TASK & GOAL MANAGEMENT
-
-
-When creating or modifying tasks or goals:
-- Convert vague input into SMART format
-- Assign priority (Urgent / Important)
-- Estimate duration and effort
-- Determine deadline flexibility
-- Break down complex tasks when needed
-- Attach confidence level and source (user / AI / optimized)
-
-If required details are missing, pause execution and ask clarifying questions.
-
-
-REMINDERS & TIMER PROMPTS (CRITICAL)
-
-
-REMINDERS:
-- Create reminders proactively for deadlines, high-priority tasks, repeated postponements, and dependent tasks.
-- Schedule reminders at psychologically optimal times based on personality traits, routines, and historical feedback.
-- Never schedule reminders during sleep windows or known busy periods.
-- Avoid notification overload.
-
-Each reminder should define:
-- Time
-- Tone
-- Feedback expectation
-- Retry or adjustment policy
-
-TIMER PROMPTS:
-- Triggered by reminder feedback or task inactivity.
-- Used to reassess priorities, timing, difficulty, or task structure.
-- Never redundant or excessive.
-
-AUTONOMOUS REMINDER ADJUSTMENT:
-- Modify reminders when timing is ineffective or feedback indicates friction.
-- Remove reminders when tasks are completed, deleted, or consistently ignored.
-- Continuously improve reminder effectiveness using feedback loops.
-
-
-DAILY OPTIMIZATION CYCLE
-
-
-Once per day (e.g., at 12:00 PM local time), perform a planning cycle:
-- Review incomplete and upcoming tasks
-- Re-prioritize based on urgency, importance, and user energy
-- Adjust reminders and timer prompts
-- Detect overload or burnout signals
-- Request feedback if recent feedback is missing
-
-
-FEEDBACK & LEARNING LOOP
-
-
-- Actively request feedback through reminders and prompts.
-- Use feedback to:
-  - Adjust schedules and timing
-  - Refine personality traits
-  - Update additional information
-  - Improve future task creation and prioritization
-
-Feedback is a primary learning signal and must be respected.
-
-
-DATA INTEGRITY & CONFIRMATION
-
-
-Before any add, modify, or delete operation:
-- Verify all required parameters exist.
-- Request clarification if needed.
-
-After execution:
-- Clearly confirm what was changed.
-- Allow easy correction or reversal.
-
-
-ADAPTABILITY & OPTIMIZATION MODE
-
-
-- Gracefully handle sudden plan changes.
-- Reorganize schedules without judgment or friction.
-- When user intent is unclear, enter Optimization Mode:
-  - Ask guided questions to refine goals, tasks, timing, or personal context.
-  - Never proceed on low-confidence assumptions.
-
-
-ROLE IDENTITY
-
-
-You are not a passive assistant.
-You are an active, thoughtful, trustworthy Personal Manager.
-
-Your tone is:
-- Calm
-- Supportive
-- Structured
-- Clear
-- Non-judgmental
-
-
-
-
-
-
-When a user mentions colors, call updateAppColors.
-For todos: use addTodo, deleteTodo, modifyTodo.
+You are a professional Personal manager. When a user mentions colors, call updateAppColors.
+For todos: use addTodo, deleteTodo, modifyTodo., use this only to manage daily todos for the user, analysing the user goals and steps
 For goals: addGoal, deleteGoal, modifyGoal.
-For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt.
-For feedback: use addFeedback.
-For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait.
-For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo.
-For reminders: use addReminder, deleteReminder, modifyReminder.`
+For goal steps: addGoalStep, deleteGoalStep, modifyGoalStep., use goals,goal steps to help user define their long term goals, and the journey to complete the goal
+For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt., use this to send scheduled ai prompts to update todos based on goals,goal steps,and it's importance
+For feedback: addFeedback,deleteFeedback,modifyFeedback., use this to access user feedback and remove unwanted feedback after using them.
+For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait., use this to constantly know the user and update about their personality to better help them manage their tasks.
+For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo., use this for any other additional information about the user for better scheduling to be in additional info.
+For reminders: use addReminder, deleteReminder, modifyReminder., use this to schedule reminders to user, to get user feedback, which is stored in feedback, to start conversation with ai from reminders.
 
+Help the user figure out of how to achieve goals if they are confused.
+Collect user info and store in personality, additional info as necessary.
+when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
+When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.`
     // Build conversation history (only user/model messages, no system messages)
     let conversationHistory = chatHistory
       ?.filter(msg => msg.role && (msg.role === 'user' || msg.role === 'model') && msg.content)
@@ -363,8 +177,8 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
           type: 'object',
           properties: {
             task: { type: 'string', description: 'The task to be done.' },
-            importance: { type: 'string', description: 'The importance level.' },
-            urgency: { type: 'string', description: 'The urgency level.' },
+            importance: { type: 'string', description: 'The importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'The urgency level.',enum: ['URGENT', 'NOT URGENT']},
             description: { type: 'string', description: 'Task description.' },
             dueDate: { type: 'string', description: 'Due date in ISO format.' },
             isCompleted: { type: 'boolean', description: 'Whether the task is completed.' }
@@ -389,8 +203,8 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
           properties: {
             taskId: { type: 'string', description: 'The ID of the task to modify.' },
             newTask: { type: 'string', description: 'The updated task.' },
-            newImportance: { type: 'string' },
-            newUrgency: { type: 'string' },
+            newImportance: { type: 'string', description: 'The updated importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string',description: 'The updated urgency level.',enum: ['URGENT', 'NOT URGENT']},
             newDescription: { type: 'string' },
             newDueDate: { type: 'string' },
             newIsCompleted: { type: 'boolean' }
@@ -410,7 +224,9 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             title: { type: 'string', description: 'The goal title.' },
             description: { type: 'string', description: 'Goal description.' },
             targetDate: { type: 'string', description: 'Target date in ISO format.' },
-            isCompleted: { type: 'boolean', description: 'Whether the goal is completed.' }
+            isCompleted: { type: 'boolean', description: 'Whether the goal is completed.' },
+            importance: { type: 'string', description: 'The importance level of goal',enum:['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'The urgency level of goal',enum:['URGENT', 'NOT URGENT'] }
           },
           required: ['title']
         }
@@ -434,9 +250,52 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             newTitle: { type: 'string', description: 'The updated title.' },
             newDescription: { type: 'string' },
             newTargetDate: { type: 'string' },
-            newIsCompleted: { type: 'boolean' }
+            newIsCompleted: { type: 'boolean' },
+            newImportance: { type: 'string', description: 'The updated importance level.',enum:['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string', description: 'The updated urgency level.',enum:['URGENT','NOT URGENT'] }
           },
           required: ['goalId', 'newTitle']
+        }
+      }]
+    }
+
+    const goalStepTool = {
+      functionDeclarations: [{
+        name: 'addGoalStep',
+        description: 'Adds a new step to a goal.',
+        parameters: {
+          type: 'object',
+          properties: {
+            goalId: { type: 'string', description: 'The ID of the goal this step belongs to.' },
+            title: { type: 'string', description: 'The step title.' },
+            description: { type: 'string', description: 'Step description.' },
+            orderIndex: { type: 'number', description: 'The order index of the step.' }
+          },
+          required: ['goalId', 'title']
+        }
+      }, {
+        name: 'deleteGoalStep',
+        description: 'Deletes a goal step.',
+        parameters: {
+          type: 'object',
+          properties: {
+            stepId: { type: 'string', description: 'The ID of the step to delete.' }
+          },
+          required: ['stepId']
+        }
+      }, {
+        name: 'modifyGoalStep',
+        description: 'Modifies a goal step.',
+        parameters: {
+          type: 'object',
+          properties: {
+            stepId: { type: 'string', description: 'The ID of the step to modify.' },
+            newTitle: { type: 'string', description: 'The updated title.' },
+            newDescription: { type: 'string' },
+            newIsCompleted: { type: 'boolean', description: 'Whether the step is completed.' },
+            newOrderIndex: { type: 'number', description: 'The updated order index.' }
+          },
+          required: ['stepId', 'newTitle']
         }
       }]
     }
@@ -496,6 +355,27 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             feedback: { type: 'string', description: 'The feedback text.' }
           },
           required: ['feedback']
+        }
+      }, {
+        name: 'deleteFeedback',
+        description: 'Deletes user feedback.',
+        parameters: {
+          type: 'object',
+          properties: {
+            feedbackId: { type: 'string', description: 'The ID of the feedback to delete.' }
+          },
+          required: ['feedbackId']
+        }
+      }, {
+        name: 'modifyFeedback',
+        description: 'Modifies user feedback.',
+        parameters: {
+          type: 'object',
+          properties: {
+            feedbackId: { type: 'string', description: 'The ID of the feedback to modify.' },
+            newFeedback: { type: 'string', description: 'The updated feedback text.' }
+          },
+          required: ['feedbackId', 'newFeedback']
         }
       }]
     }
@@ -628,7 +508,7 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
     const chat = model.startChat({
       generationConfig,
       history: conversationHistory,
-      tools: [themeTool, todoTool, goalTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
+      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
     })
 
     const result = await chat.sendMessage([
@@ -683,7 +563,9 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             title: args.title || 'Untitled Goal',
             description: args.description || '',
             target_date: args.targetDate,
-            is_completed: args.isCompleted || false
+            is_completed: args.isCompleted || false,
+            importance: args.importance || 'NOT IMPORTANT',
+            urgency: args.urgency || 'NOT URGENT'
           })
           if (addGoalError) throw addGoalError
           responseText += `Added goal: ${args.title || 'Untitled Goal'}\n`
@@ -698,10 +580,40 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             title: args.newTitle,
             description: args.newDescription,
             target_date: args.newTargetDate,
-            is_completed: args.newIsCompleted
+            is_completed: args.newIsCompleted,
+            importance: args.newImportance,
+            urgency: args.newUrgency
           }).eq('id', args.goalId).eq('user_id', userId)
           if (modifyGoalError) throw modifyGoalError
           responseText += `Modified goal: ${args.newTitle}\n`
+          break
+        case 'addGoalStep':
+          const { error: addStepError } = await supabaseClient.from('goal_steps').insert({
+            id: Date.now().toString(),
+            user_id: userId,
+            goal_id: args.goalId,
+            title: args.title || 'Untitled Step',
+            description: args.description || '',
+            order_index: args.orderIndex || 0,
+            is_completed: false
+          })
+          if (addStepError) throw addStepError
+          responseText += `Added goal step: ${args.title || 'Untitled Step'}\n`
+          break
+        case 'deleteGoalStep':
+          const { error: deleteStepError } = await supabaseClient.from('goal_steps').delete().eq('id', args.stepId).eq('user_id', userId)
+          if (deleteStepError) throw deleteStepError
+          responseText += `Deleted goal step\n`
+          break
+        case 'modifyGoalStep':
+          const { error: modifyStepError } = await supabaseClient.from('goal_steps').update({
+            title: args.newTitle,
+            description: args.newDescription,
+            is_completed: args.newIsCompleted,
+            order_index: args.newOrderIndex
+          }).eq('id', args.stepId).eq('user_id', userId)
+          if (modifyStepError) throw modifyStepError
+          responseText += `Modified goal step: ${args.newTitle}\n`
           break
         case 'addTimerPrompt':
           const { error: addTimerError } = await supabaseClient.from('timer_prompts').insert({
@@ -742,6 +654,18 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
           })
           if (addFeedbackError) throw addFeedbackError
           responseText += `Added feedback\n`
+          break
+        case 'deleteFeedback':
+          const { error: deleteFeedbackError } = await supabaseClient.from('user_feedback').delete().eq('id', args.feedbackId).eq('user_id', userId)
+          if (deleteFeedbackError) throw deleteFeedbackError
+          responseText += `Deleted feedback\n`
+          break
+        case 'modifyFeedback':
+          const { error: modifyFeedbackError } = await supabaseClient.from('user_feedback').update({
+            feedback: args.newFeedback
+          }).eq('id', args.feedbackId).eq('user_id', userId)
+          if (modifyFeedbackError) throw modifyFeedbackError
+          responseText += `Modified feedback\n`
           break
         case 'updateAppColors':
           // Handle theme update - this might not be stored in DB, but could be handled separately
@@ -798,7 +722,7 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             scheduled_date: args.scheduledDate,
             payload: args.title || 'Untitled Reminder', // Using title as payload for now
             reminder_type: args.reminderType || 'basic',
-            options: args.options ? JSON.stringify(args.options) : null,
+            options: args.options || null, // Store as native array, not JSON string
             expected_answer: args.expectedAnswer || '',
             ai_prompt: args.aiPrompt || ''
           })
@@ -817,7 +741,7 @@ For reminders: use addReminder, deleteReminder, modifyReminder.`
             scheduled_date: args.newScheduledDate,
             payload: args.newTitle, // Update payload as well
             reminder_type: args.newReminderType,
-            options: args.newOptions ? JSON.stringify(args.newOptions) : null,
+            options: args.newOptions || null, // Store as native array, not JSON string
             expected_answer: args.newExpectedAnswer,
             ai_prompt: args.newAiPrompt,
             updated_at: new Date().toISOString()

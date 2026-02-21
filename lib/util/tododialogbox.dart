@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/button.dart';
+import 'package:to_do_list/util/gradienttextfield.dart';
 import 'package:to_do_list/util/selectbutton.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
 
-class TodoDialogbox extends StatefulWidget {
+class TodoDialogbox extends ConsumerStatefulWidget {
   const TodoDialogbox({
     super.key,
     required this.controller,
@@ -31,10 +35,10 @@ class TodoDialogbox extends StatefulWidget {
   final bool initialUrgency;
 
   @override
-  State<TodoDialogbox> createState() => _TodoDialogboxState();
+  ConsumerState<TodoDialogbox> createState() => _TodoDialogboxState();
 }
 
-class _TodoDialogboxState extends State<TodoDialogbox> {
+class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
   late bool _isImportant;
   late bool _isUrgent;
   late TextEditingController _descriptionController;
@@ -90,110 +94,85 @@ class _TodoDialogboxState extends State<TodoDialogbox> {
 
   @override
   Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
     return AlertDialog(
-      backgroundColor: Colors.grey,
-      content: Container(
-        height: 420,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.grey,
-        ),
-        child: Column(
-          children: [
-            TextField(
-              maxLength: 30,
-              controller: widget.controller,
-              cursorColor: Colors.white,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Task Name',
-                hintStyle: TextStyle(color: Colors.white),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
+      scrollable: true,
+      backgroundColor: appTheme.background,
+      content: Column(
+        children: [
+          Gradienttextfield(controller: widget.controller, text: "Task Name"),
+      
+          Gradienttextfield(controller: _descriptionController, text: "Description (optionsl)"),
+      
+          Row(
+            children: [
+              Expanded(
+                child: Smalltextgradient(
+                  fontsize: 15,
+                  text: 
+                  _selectedDueDate == null
+                      ? 'No due date selected'
+                      : 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}'
                 ),
               ),
-            ),
-
-            TextField(
-              maxLength: 100,
-              controller: _descriptionController,
-              cursorColor: Colors.white,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Description (optional)',
-                hintStyle: TextStyle(color: Colors.white),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
+              TextButton(
+                onPressed: () => _selectDate(context),
+                child: const Smalltextgradient(
+                  text:'Select Date',
+                  fontsize: 15,
                 ),
               ),
-            ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedDueDate == null
-                        ? 'No due date selected'
-                        : 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
+            ],
+          ),
+      
+          Row(
+            children: [
+              Expanded(
+                child: Smalltextgradient(
+                  text:_selectedTime == null
+                      ? 'No time selected'
+                      : 'Time: ${_selectedTime!.format(context)}',
+                  fontsize: 15,
                 ),
-                TextButton(
-                  onPressed: () => _selectDate(context),
-                  child: const Text(
-                    'Select Date',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedTime == null
-                        ? 'No time selected'
-                        : 'Time: ${_selectedTime!.format(context)}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => _selectTime(context),
-                  child: const Text(
-                    'Select Time',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Selectbutton(
-                initialSelection: _isImportant,
-                text1: "IMPORTANT",
-                text2: "NOT IMPORTANT",
-                onSelectionChanged: (value) {
-                  setState(() => _isImportant = value);
-                },
               ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Selectbutton(
-                initialSelection: _isUrgent,
-                text1: "URGENT",
-                text2: "NOT URGENT",
-                onSelectionChanged: (value) {
-                  setState(() => _isUrgent = value);
-                },
+              TextButton(
+                onPressed: () => _selectTime(context),
+                child: const Smalltextgradient(
+                  text: 'Select Time',
+                  fontsize: 15,
+                ),
               ),
+            ],
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Selectbutton(
+              initialSelection: _isImportant,
+              text1: "IMPORTANT",
+              text2: "NOT IMPORTANT",
+              onSelectionChanged: (value) {
+                setState(() => _isImportant = value);
+              },
             ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Selectbutton(
+              initialSelection: _isUrgent,
+              text1: "URGENT",
+              text2: "NOT URGENT",
+              onSelectionChanged: (value) {
+                setState(() => _isUrgent = value);
+              },
+            ),
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Buttonstyl(
                   savetext: 'Save',
@@ -216,7 +195,7 @@ class _TodoDialogboxState extends State<TodoDialogbox> {
                         );
                       }
                     }
-
+                  
                     widget.onSave(
                       widget.controller.text,
                       _descriptionController.text,
@@ -226,14 +205,15 @@ class _TodoDialogboxState extends State<TodoDialogbox> {
                     );
                   },
                 ),
+                const SizedBox(width: 8),
                 Buttonstyl(
                   savetext: 'Cancel',
                   onPressed: widget.onCancel,
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

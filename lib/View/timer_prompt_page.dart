@@ -142,7 +142,7 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
             }
           },
         ),
-        backgroundColor: appTheme.primaryGradient1,
+        backgroundColor: appTheme.actionGradientStart,
         child: const Icon(Icons.add, color: Colors.white),
       ));
   }

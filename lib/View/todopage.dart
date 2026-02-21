@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_list/util/mediumgradienttext.dart';
 import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
 import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/theme.dart';
@@ -169,9 +170,9 @@ class _TodoPageState extends ConsumerState<TodoPage> {
 
               return Column(
                 children: [
-                  Text(
-                    "$sortTitle $sortSub",
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  Mediumgradienttext(
+                    text:"$sortTitle $sortSub",
+                    fontsize:18,
                   ),
                   ListView.builder(
                     itemCount: matchingTodos.length,

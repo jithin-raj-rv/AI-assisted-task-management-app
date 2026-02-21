@@ -53,7 +53,7 @@ class GoalTile extends ConsumerWidget {
             height: 75,
             decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.white, appTheme.primary, appTheme.secondary],
+                  colors: [appTheme.background, appTheme.primary, appTheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -68,9 +68,9 @@ class GoalTile extends ConsumerWidget {
                   children: [
                     Text(
                       'Due: ${DateFormat('MMM dd, yyyy').format(goal.targetDate)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white70,
+                        color: appTheme.background,
                       ),
                     ),
                     const SizedBox(width: 8), // Spacing between deadline and icon

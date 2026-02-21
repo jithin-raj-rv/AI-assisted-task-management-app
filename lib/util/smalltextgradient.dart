@@ -13,7 +13,7 @@ class Smalltextgradient extends ConsumerWidget {
     return ShaderMask(
       shaderCallback: (bounds) {
         return LinearGradient(
-          colors: [appTheme.secondary, appTheme.secondaryGradient1],
+          colors: [appTheme.textGradientEnd, appTheme.textGradientStart],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(bounds);

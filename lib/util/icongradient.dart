@@ -14,7 +14,7 @@ class Icongradient extends ConsumerWidget {
               child: Icon(icon),
               shaderCallback: (bounds) {
                 return LinearGradient(
-                  colors: [appTheme.primary, appTheme.primaryGradient1],
+                  colors: [appTheme.primary, appTheme.actionGradientStart],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ).createShader(bounds);

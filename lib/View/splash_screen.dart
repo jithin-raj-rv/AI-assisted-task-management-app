@@ -62,7 +62,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: appTheme.primaryGradient1,
+                color: appTheme.actionGradientStart,
               ),
             ),
             const SizedBox(height: 10),

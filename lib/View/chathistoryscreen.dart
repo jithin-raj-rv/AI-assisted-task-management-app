@@ -65,7 +65,7 @@ class _ChatHistoryScreenState extends ConsumerState<ChatHistoryScreen> {
                     title: Text(
                       session['title']!,
                       style: TextStyle(
-                        color: isCurrent ? appTheme.primaryGradient1 : appTheme.secondary,
+                        color: isCurrent ? appTheme.actionGradientStart : appTheme.secondary,
                         fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
