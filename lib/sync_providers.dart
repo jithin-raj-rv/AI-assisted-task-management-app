@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 import 'package:to_do_list/services/todo_sync_service.dart';
 import 'package:to_do_list/services/goal_sync_service.dart';
+import 'package:to_do_list/services/goal_step_sync_service.dart';
 import 'package:to_do_list/services/reminder_sync_service.dart';
 import 'package:to_do_list/services/settings_sync_service.dart';
 import 'package:to_do_list/services/timer_prompt_sync_service.dart';
@@ -21,6 +22,11 @@ final todoSyncServiceProvider = Provider<TodoSyncService>((ref) {
 final goalSyncServiceProvider = Provider<GoalSyncService>((ref) {
   final connectivity = ref.watch(connectivityServiceProvider);
   return GoalSyncService(connectivity);
+});
+
+final goalStepSyncServiceProvider = Provider<GoalStepSyncService>((ref) {
+  final connectivity = ref.watch(connectivityServiceProvider);
+  return GoalStepSyncService(connectivity);
 });
 
 final reminderSyncServiceProvider = Provider<ReminderSyncService>((ref) {

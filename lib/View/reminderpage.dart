@@ -11,6 +11,7 @@ import 'package:to_do_list/util/remainderdialogbox.dart'; // Import RemainderDia
 import 'package:to_do_list/util/notificationtile.dart'; // Import NotificationTile
 import 'package:to_do_list/services/supabase_gemini_service.dart';
 import 'package:to_do_list/providers.dart';
+import 'package:to_do_list/sync_providers.dart';
 import 'package:intl/intl.dart';
 import 'package:to_do_list/viewmodels/reminder_page_viewmodel.dart';
 import 'package:to_do_list/viewmodels/user_feedback_viewmodel.dart';
@@ -64,6 +65,14 @@ class _ReminderPageState extends ConsumerState<ReminderPage> {
     await viewModel.handleAIPrompt(context, notification);
   }
 
+  // Function to refresh reminders from Supabase
+  Future<void> _refreshReminders() async {
+    // Force sync from Supabase
+    await ref.read(reminderSyncServiceProvider).syncFromSupabase();
+    // Reload from cache
+    await ref.read(scheduledNotificationsViewModelProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final appTheme = ref.watch(themeProvider);
@@ -72,6 +81,13 @@ class _ReminderPageState extends ConsumerState<ReminderPage> {
       appBar: AppBar(
         backgroundColor: appTheme.background,
         title: Tittlegradient(text: "My Reminders"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: appTheme.primary),
+            onPressed: _refreshReminders,
+            tooltip: 'Refresh reminders',
+          ),
+        ],
       ),
       body: Container(
         color: appTheme.background,

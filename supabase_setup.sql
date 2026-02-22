@@ -28,6 +28,21 @@ CREATE TABLE goals (
   description TEXT NOT NULL,
   target_date TIMESTAMPTZ,
   is_completed BOOLEAN DEFAULT FALSE,
+  importance TEXT DEFAULT 'NOT IMPORTANT',
+  urgency TEXT DEFAULT 'NOT URGENT',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Goal Steps table
+CREATE TABLE goal_steps (
+  id TEXT PRIMARY KEY,
+  goal_id TEXT REFERENCES goals(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  step_text TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  is_completed BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -112,6 +127,7 @@ CREATE TABLE user_settings (
 -- Enable RLS on all tables
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goal_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE timer_prompts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -132,6 +148,12 @@ CREATE POLICY "Users can view their own goals" ON goals FOR SELECT USING (auth.u
 CREATE POLICY "Users can insert their own goals" ON goals FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own goals" ON goals FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own goals" ON goals FOR DELETE USING (auth.uid() = user_id);
+
+-- Goal Steps
+CREATE POLICY "Users can view their own goal steps" ON goal_steps FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own goal steps" ON goal_steps FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own goal steps" ON goal_steps FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own goal steps" ON goal_steps FOR DELETE USING (auth.uid() = user_id);
 
 -- Timer Prompts
 CREATE POLICY "Users can view their own timer prompts" ON timer_prompts FOR SELECT USING (auth.uid() = user_id);
@@ -380,6 +402,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Triggers
 CREATE TRIGGER update_todos_updated_at BEFORE UPDATE ON todos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_goals_updated_at BEFORE UPDATE ON goals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_goal_steps_updated_at BEFORE UPDATE ON goal_steps FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_timer_prompts_updated_at BEFORE UPDATE ON timer_prompts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_personality_traits_updated_at BEFORE UPDATE ON personality_traits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -26,10 +26,29 @@ class ScheduledNotificationsViewModel extends Notifier<ScheduledNotificationsSta
   @override
   ScheduledNotificationsState build() {
     _syncService = ref.watch(reminderSyncServiceProvider);
+    
+    // Load initial data from cache immediately
+    _loadInitialData();
+    
+    // Then watch for changes
     _cache.watchAll().listen((notifications) {
       state = ScheduledNotificationsState(notifications: notifications, isLoading: false);
     });
     return const ScheduledNotificationsState(isLoading: true);
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final notifications = await _cache.getAll();
+      if (notifications.isNotEmpty) {
+        state = ScheduledNotificationsState(notifications: notifications, isLoading: false);
+        print('[ScheduledNotificationsVM] Loaded ${notifications.length} initial notifications from cache');
+      } else {
+        print('[ScheduledNotificationsVM] No cached notifications found, will sync from Supabase');
+      }
+    } catch (e) {
+      print('[ScheduledNotificationsVM] Error loading initial data: $e');
+    }
   }
 
   Future<void> addNotification(ScheduledNotification notification) async {
@@ -56,6 +75,10 @@ class ScheduledNotificationsViewModel extends Notifier<ScheduledNotificationsSta
 
   Future<void> deleteNotification(String id) async {
     await _syncService.deleteReminder(id);
+  }
+
+  Future<void> refresh() async {
+    await _loadInitialData();
   }
 }
 

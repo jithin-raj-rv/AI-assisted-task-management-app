@@ -38,8 +38,8 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
     return const AsyncData(null);
   }
 
-  Future<void> runInitialSync() async {
-    if (_hasSynced) return;
+  Future<void> runInitialSync({bool force = false}) async {
+    if (_hasSynced && !force) return;
 
     final connectivity = ref.read(connectivityServiceProvider);
     if (connectivity.currentStatus != ConnectivityStatus.online) {
@@ -53,6 +53,7 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
 
       await ref.read(todoSyncServiceProvider).syncFromSupabase();
       await ref.read(goalSyncServiceProvider).syncFromSupabase();
+      await ref.read(goalStepSyncServiceProvider).syncFromSupabase();
       await ref.read(reminderSyncServiceProvider).syncFromSupabase();
       await ref.read(settingsSyncServiceProvider).syncFromSupabase();
       await ref.read(timerPromptSyncServiceProvider).syncFromSupabase();
@@ -144,6 +145,7 @@ class AuthStateManager extends Notifier<bool> {
     // Then setup realtime subscriptions
     ref.read(todoSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(goalSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(goalStepSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(reminderSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(personalitySyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).setupRealtimeSubscriptions();
@@ -161,6 +163,7 @@ class AuthStateManager extends Notifier<bool> {
     // Clear realtime subscriptions
     ref.read(todoSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(goalSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(goalStepSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(reminderSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(personalitySyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).clearRealtimeSubscriptions();

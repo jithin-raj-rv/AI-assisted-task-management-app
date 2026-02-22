@@ -18,7 +18,12 @@ class ScheduledNotificationCache {
 
   Future<List<ScheduledNotification>> getAll() async {
     final box = await _box;
-    return box.values.toList();
+    final list = box.values.toList();
+    print('[Cache] getAll() returning ${list.length} notifications');
+    for (var i = 0; i < list.length; i++) {
+      print('[Cache] Notification $i: id=${list[i].id} (${list[i].id.runtimeType}), title=${list[i].title}');
+    }
+    return list;
   }
 
   Future<void> clear() async {

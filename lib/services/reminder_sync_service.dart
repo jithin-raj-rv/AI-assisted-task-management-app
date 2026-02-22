@@ -34,29 +34,49 @@ class ReminderSyncService {
 
     try {
       final remindersData = await _supabase.from('reminders').select('*').eq('user_id', user.id) as List;
-      final reminders = remindersData.map((r) => ScheduledNotification(
-        id: r['id'],
-        title: r['title'],
-        body: r['body'],
-        scheduledDate: r['scheduled_date'] != null ? DateTime.parse(r['scheduled_date']) : DateTime.now(),
-        payload: r['payload'],
-        reminderType: _parseReminderType(r['reminder_type']),
-        options: r['options'] as List<String>?,
-        expectedAnswer: r['expected_answer'],
-        aiPrompt: r['ai_prompt'],
-        userId: r['user_id'],
-        createdAt: r['created_at'] != null ? DateTime.parse(r['created_at']) : null,
-        updatedAt: r['updated_at'] != null ? DateTime.parse(r['updated_at']) : null,
-      )).toList();
+      print('[ReminderSync] Fetched ${remindersData.length} reminders from Supabase');
+      for (var i = 0; i < remindersData.length; i++) {
+        print('[ReminderSync] Reminder $i: id=${remindersData[i]['id']} (${remindersData[i]['id'].runtimeType}), title=${remindersData[i]['title']}, type=${remindersData[i]['reminder_type']}, options=${remindersData[i]['options']} (${remindersData[i]['options']?.runtimeType})');
+      }
+      final reminders = remindersData.map((r) {
+        // Parse options - handle both List<dynamic> and List<String> from Supabase
+        List<String>? options;
+        final rawOptions = r['options'];
+        if (rawOptions != null) {
+          if (rawOptions is List) {
+            options = rawOptions.map((e) => e.toString()).toList();
+          }
+        }
+        return ScheduledNotification(
+          id: r['id']?.toString() ?? '',  // Explicitly convert to String
+          title: r['title'] ?? '',
+          body: r['body'],
+          scheduledDate: r['scheduled_date'] != null ? DateTime.parse(r['scheduled_date']) : DateTime.now(),
+          payload: r['payload'] ?? '',
+          reminderType: _parseReminderType(r['reminder_type']),
+          options: options,
+          expectedAnswer: r['expected_answer'],
+          aiPrompt: r['ai_prompt'],
+          userId: r['user_id'],
+          createdAt: r['created_at'] != null ? DateTime.parse(r['created_at']) : null,
+          updatedAt: r['updated_at'] != null ? DateTime.parse(r['updated_at']) : null,
+        );
+      }).toList();
 
       final box = await Hive.openBox<ScheduledNotification>('scheduled_notifications');
+      // Clear the entire cache to ensure fresh data from Supabase
+      await box.clear();
+      print('[ReminderSync] Cache cleared');
+      print('[ReminderSync] Cache box opened, current keys: ${box.keys.toList()}');
       final newReminders = {for (var reminder in reminders) reminder.id: reminder};
+      print('[ReminderSync] New reminders to add: ${newReminders.keys.toList()}');
       final oldKeys = box.keys.toSet();
       final keysToDelete = oldKeys.difference(newReminders.keys.toSet());
       if (keysToDelete.isNotEmpty) {
         box.deleteAll(keysToDelete);
       }
       box.putAll(newReminders);
+      print('[ReminderSync] After putAll, cache keys: ${box.keys.toList()}');
     } catch (e) {
       print('[ReminderSync] Error syncing reminders: $e');
     }
@@ -119,8 +139,8 @@ class ReminderSyncService {
             print('[ReminderSync] Processing ${payload.eventType} for reminder id: ${record['id']}');
             print('[ReminderSync] Record fields: id=${record['id']}, title=${record['title']}, body=${record['body']}, scheduled_date=${record['scheduled_date']}, payload=${record['payload']}, reminder_type=${record['reminder_type']}, options=${record['options']}, expected_answer=${record['expected_answer']}, ai_prompt=${record['ai_prompt']}, user_id=${record['user_id']}');
             final reminder = ScheduledNotification(
-              id: record['id'],
-              title: record['title'],
+              id: record['id']?.toString() ?? '',  // Explicitly convert to String
+              title: record['title'] ?? '',
               body: record['body'],
               scheduledDate: record['scheduled_date'] != null ? DateTime.parse(record['scheduled_date']) : DateTime.now(),
               payload: record['payload'],

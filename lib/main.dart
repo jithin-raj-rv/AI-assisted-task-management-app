@@ -10,6 +10,7 @@ import 'package:to_do_list/View/login_page.dart';
 import 'package:to_do_list/View/user_info_collection_page.dart';
 import 'package:to_do_list/View/onboarding_dialog.dart';
 import 'package:to_do_list/View/chatscreen.dart';
+import 'package:to_do_list/models/goal_step_model.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
@@ -130,6 +131,7 @@ void main() async {
   // Register Hive Adapters
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(GoalAdapter());
+  Hive.registerAdapter(GoalStepAdapter());
   Hive.registerAdapter(ScheduledNotificationAdapter());
   Hive.registerAdapter(ReminderTypeAdapter());
   Hive.registerAdapter(TimerPromptAdapter());

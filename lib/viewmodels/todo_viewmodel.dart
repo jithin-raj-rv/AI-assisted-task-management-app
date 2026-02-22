@@ -26,12 +26,29 @@ class TodoViewModel extends Notifier<TodoState> {
   @override
   TodoState build() {
     _syncService = ref.watch(todoSyncServiceProvider);
+    
+    // Load initial data from cache immediately
+    _loadInitialData();
+    
+    // Then watch for changes
     _cache.watchAll().listen((todos) {
       print('[TodoViewModel] Cache updated with ${todos.length} todos: ${todos.map((t) => t.id).toList()}');
       state = TodoState(todos: todos, isLoading: false);
     });
     print('[TodoViewModel] Built TodoViewModel');
     return const TodoState(isLoading: true);
+  }
+
+  Future<void> _loadInitialData() async {
+    try {
+      final todos = await _cache.getAll();
+      if (todos.isNotEmpty) {
+        state = TodoState(todos: todos, isLoading: false);
+        print('[TodoViewModel] Loaded ${todos.length} initial todos from cache');
+      }
+    } catch (e) {
+      print('[TodoViewModel] Error loading initial data: $e');
+    }
   }
 
 
