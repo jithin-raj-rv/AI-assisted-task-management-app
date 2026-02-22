@@ -8,10 +8,16 @@ import 'package:to_do_list/services/settings_sync_service.dart';
 import 'package:to_do_list/services/timer_prompt_sync_service.dart';
 import 'package:to_do_list/services/personality_sync_service.dart';
 import 'package:to_do_list/services/additional_info_sync_service.dart';
+import 'package:to_do_list/services/user_feedback_sync_service.dart';
 
 // Sync Service Providers
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
   return ConnectivityService();
+});
+
+final userFeedbackSyncServiceProvider = Provider<UserFeedbackSyncService>((ref) {
+  final connectivity = ref.watch(connectivityServiceProvider);
+  return UserFeedbackSyncService(connectivity);
 });
 
 final todoSyncServiceProvider = Provider<TodoSyncService>((ref) {

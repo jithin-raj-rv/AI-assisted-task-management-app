@@ -64,19 +64,15 @@ class ReminderSyncService {
       }).toList();
 
       final box = await Hive.openBox<ScheduledNotification>('scheduled_notifications');
-      // Clear the entire cache to ensure fresh data from Supabase
-      await box.clear();
-      print('[ReminderSync] Cache cleared');
-      print('[ReminderSync] Cache box opened, current keys: ${box.keys.toList()}');
       final newReminders = {for (var reminder in reminders) reminder.id: reminder};
-      print('[ReminderSync] New reminders to add: ${newReminders.keys.toList()}');
       final oldKeys = box.keys.toSet();
       final keysToDelete = oldKeys.difference(newReminders.keys.toSet());
       if (keysToDelete.isNotEmpty) {
         box.deleteAll(keysToDelete);
       }
-      box.putAll(newReminders);
-      print('[ReminderSync] After putAll, cache keys: ${box.keys.toList()}');
+      if (newReminders.isNotEmpty) {
+        box.putAll(newReminders);
+      }
     } catch (e) {
       print('[ReminderSync] Error syncing reminders: $e');
     }
