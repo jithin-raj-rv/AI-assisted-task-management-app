@@ -6,9 +6,36 @@ import 'package:to_do_list/util/goaltile.dart';
 import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
+import 'package:to_do_list/util/mediumgradienttext.dart';
 import 'package:to_do_list/util/offline_utils.dart';
 import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
+
+int getGoalCategoryScore(String importance, String urgency) {
+  if (importance == 'IMPORTANT' && urgency == 'URGENT') {
+    return 1;
+  }
+  if (importance == 'IMPORTANT' && urgency == 'NOT URGENT') {
+    return 2;
+  }
+  if (importance == 'NOT IMPORTANT' && urgency == 'URGENT') {
+    return 3;
+  }
+  return 4; // NOT IMPORTANT, NOT URGENT
+}
+
+List<Map<String, String>> deriveGoalCategories(List<Goal> goals) {
+  final categories = goals
+      .map((g) => {'importance': g.importance, 'urgency': g.urgency})
+      .toSet()
+      .toList();
+  categories.sort((a, b) {
+    final scoreA = getGoalCategoryScore(a['importance']!, a['urgency']!);
+    final scoreB = getGoalCategoryScore(b['importance']!, b['urgency']!);
+    return scoreA.compareTo(scoreB);
+  });
+  return categories;
+}
 
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
@@ -38,7 +65,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         controller: _goalController,
         initialDescription: goal.description,
         initialTargetDate: goal.targetDate,
-        onSave: (name, description, dueDate, isCompleted) {
+        initialImportance: goal.importance == 'IMPORTANT',
+        initialUrgency: goal.urgency == 'URGENT',
+        onSave: (name, description, dueDate, isCompleted, importance, urgency) {
           final connectivity = ref.read(connectivityServiceProvider);
           if (connectivity.currentStatus != ConnectivityStatus.online) {
             OfflineUtils.showOfflinePopup(context);
@@ -55,6 +84,8 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               userId: goal.userId,
               createdAt: goal.createdAt,
               updatedAt: goal.updatedAt,
+              importance: importance,
+              urgency: urgency,
             ),
           );
           _goalController.clear();
@@ -74,7 +105,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       context: context,
       builder: (_) => Goaldialogbox(
         controller: _goalController,
-        onSave: (name, description, dueDate, isCompleted) async {
+        onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
           final connectivity = ref.read(connectivityServiceProvider);
           if (connectivity.currentStatus != ConnectivityStatus.online) {
             OfflineUtils.showOfflinePopup(context);
@@ -85,6 +116,8 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               title: name,
               description: description,
               targetDate: dueDate ?? DateTime.now(),
+              importance: importance,
+              urgency: urgency,
             ),
           );
           _goalController.clear();
@@ -107,43 +140,87 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
 
     print('[GoalsPage] build: rebuilding with ${goals.length} goals');
 
+    if (goals.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: appTheme.background,
+          title: Tittlegradient(text: 'My Goals'),
+        ),
+        body: Center(
+          child: Text('No goals yet!', style: TextStyle(color: Colors.white)),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _addGoal(),
+          child: const Icon(Icons.add),
+        ),
+      );
+    }
+
+    final sortList = deriveGoalCategories(goals);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appTheme.background,
         title: Tittlegradient(text: 'My Goals'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _addGoal,
-          ),
-        ],
       ),
-      body: goals.isEmpty
-          ? const Center(child: Text("No goals yet"))
-          : ListView.builder(
-              itemCount: goals.length,
-              itemBuilder: (context, index) {
-                return GoalTile(
-                  goal: goals[index],
-                  onDelete: () async {
-                    final connectivity = ref.read(connectivityServiceProvider);
-                    if (connectivity.currentStatus != ConnectivityStatus.online) {
-                      OfflineUtils.showOfflinePopup(context);
-                      return;
-                    }
-                    await ref
-                        .read(goalsPageViewModelProvider.notifier)
-                        .deleteGoal(goals[index].id!);
-                  },
-                  onEdit: () => _editGoal(goals[index]),
-                );
-              },
-            ),
-                  floatingActionButton: 
-           FloatingActionButton(
-              onPressed: () => _addGoal(),
-              child: const Icon(Icons.add),
-            )
+      body: Container(
+        color: appTheme.background,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: ListView.builder(
+            itemCount: sortList.length,
+            itemBuilder: (context, outerIndex) {
+              final category = sortList[outerIndex];
+              final String importance = category['importance']!;
+              final String urgency = category['urgency']!;
+
+              final List<Goal> matchingGoals = goals.where((goal) {
+                return goal.importance == importance && goal.urgency == urgency;
+              }).toList();
+
+              if (matchingGoals.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return Column(
+                children: [
+                  Mediumgradienttext(
+                    text: "$importance $urgency",
+                    fontsize: 18,
+                  ),
+                  ListView.builder(
+                    itemCount: matchingGoals.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final Goal goal = matchingGoals[index];
+
+                      return GoalTile(
+                        goal: goal,
+                        onDelete: () async {
+                          final connectivity = ref.read(connectivityServiceProvider);
+                          if (connectivity.currentStatus != ConnectivityStatus.online) {
+                            OfflineUtils.showOfflinePopup(context);
+                            return;
+                          }
+                          await ref
+                              .read(goalsPageViewModelProvider.notifier)
+                              .deleteGoal(goal.id!);
+                        },
+                        onEdit: () => _editGoal(goal),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _addGoal(),
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }

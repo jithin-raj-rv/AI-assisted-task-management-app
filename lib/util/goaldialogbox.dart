@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/button.dart';
+import 'package:to_do_list/util/gradienttextfield.dart';
+import 'package:to_do_list/util/selectbutton.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
 
-class Goaldialogbox extends StatefulWidget {
+class Goaldialogbox extends ConsumerStatefulWidget {
   const Goaldialogbox({
     super.key,
     required this.controller,
@@ -10,34 +15,47 @@ class Goaldialogbox extends StatefulWidget {
     required this.onSave,
     this.initialDescription,
     this.initialTargetDate,
+    this.initialImportance = false,
+    this.initialUrgency = false,
   });
 
   final TextEditingController controller;
   final String? initialDescription;
   final DateTime? initialTargetDate;
+  final bool initialImportance;
+  final bool initialUrgency;
   final VoidCallback onCancel;
   final Function(
     String name,
     String description,
     DateTime? dueDate,
     bool isCompleted,
+    String importance,
+    String urgency,
   ) onSave;
 
-
   @override
-  State<Goaldialogbox> createState() => _DialogboxState();
+  ConsumerState<Goaldialogbox> createState() => _GoaldialogboxState();
 }
 
-class _DialogboxState extends State<Goaldialogbox> {
+class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
+  late bool _isImportant;
+  late bool _isUrgent;
   late TextEditingController _descriptionController;
   DateTime? _selectedDueDate;
+  TimeOfDay? _selectedTime;
 
   @override
   void initState() {
     super.initState();
+    _isImportant = widget.initialImportance;
+    _isUrgent = widget.initialUrgency;
     _descriptionController =
         TextEditingController(text: widget.initialDescription);
     _selectedDueDate = widget.initialTargetDate;
+    if (_selectedDueDate != null) {
+      _selectedTime = TimeOfDay.fromDateTime(_selectedDueDate!);
+    }
   }
 
   @override
@@ -61,86 +79,125 @@ class _DialogboxState extends State<Goaldialogbox> {
     }
   }
 
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+    );
+
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
     return AlertDialog(
-      backgroundColor: Colors.grey,
-      content: Container(
-        height: 420,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.grey,
-        ),
-        child: Column(
-          children: [
-            TextField(
-              maxLength: 30,
-              controller: widget.controller,
-              cursorColor: Colors.white,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Goal Name',
-                hintStyle: TextStyle(color: Colors.white),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
+      scrollable: true,
+      backgroundColor: appTheme.background,
+      content: Column(
+        children: [
+          Gradienttextfield(controller: widget.controller, text: "Goal Name"),
+      
+          Gradienttextfield(controller: _descriptionController, text: "Description (optional)"),
+      
+          Row(
+            children: [
+              Expanded(
+                child: Smalltextgradient(
+                  fontsize: 15,
+                  text: 
+                  _selectedDueDate == null
+                      ? 'No due date selected'
+                      : 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}'
                 ),
               ),
-            ),
-
-            TextField(
-              maxLength: 100,
-              controller: _descriptionController,
-              cursorColor: Colors.white,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Description (optional)',
-                hintStyle: TextStyle(color: Colors.white),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
+              TextButton(
+                onPressed: () => _selectDate(context),
+                child: const Smalltextgradient(
+                  text:'Select Date',
+                  fontsize: 15,
                 ),
               ),
+            ],
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Selectbutton(
+              initialSelection: _isImportant,
+              text1: "IMPORTANT",
+              text2: "NOT IMPORTANT",
+              onSelectionChanged: (value) {
+                setState(() => _isImportant = value);
+              },
             ),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedDueDate == null
-                        ? 'No due date selected'
-                        : 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => _selectDate(context),
-                  child: const Text(
-                    'Select Date',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Selectbutton(
+              initialSelection: _isUrgent,
+              text1: "URGENT",
+              text2: "NOT URGENT",
+              onSelectionChanged: (value) {
+                setState(() => _isUrgent = value);
+              },
             ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          ),
+      
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Buttonstyl(
                   savetext: 'Save',
-                  onPressed: () => widget.onSave(
-                    widget.controller.text,
-                    _descriptionController.text,
-                    _selectedDueDate,
-                    false,
-                  ),
+                  onPressed: () {
+                    DateTime? finalDueDate;
+                    if (_selectedDueDate != null) {
+                      if (_selectedTime != null) {
+                        finalDueDate = DateTime(
+                          _selectedDueDate!.year,
+                          _selectedDueDate!.month,
+                          _selectedDueDate!.day,
+                          _selectedTime!.hour,
+                          _selectedTime!.minute,
+                        );
+                      } else {
+                        finalDueDate = DateTime(
+                          _selectedDueDate!.year,
+                          _selectedDueDate!.month,
+                          _selectedDueDate!.day,
+                        );
+                      }
+                    }
+                    
+                    final importance = _isImportant ? 'IMPORTANT' : 'NOT IMPORTANT';
+                    final urgency = _isUrgent ? 'URGENT' : 'NOT URGENT';
+                  
+                    widget.onSave(
+                      widget.controller.text,
+                      _descriptionController.text,
+                      finalDueDate,
+                      false,
+                      importance,
+                      urgency,
+                    );
+                  },
                 ),
+                const SizedBox(width: 8),
                 Buttonstyl(
                   savetext: 'Cancel',
                   onPressed: widget.onCancel,
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

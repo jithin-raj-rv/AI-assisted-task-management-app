@@ -34,6 +34,8 @@ enum QuestionType {
   singleChoice,
   @HiveField(3)
   multiChoice,
+  @HiveField(4)
+  paragraph,
 }
 
 class UserInfoCollectionDB {
@@ -51,7 +53,8 @@ class UserInfoCollectionDB {
       print('questionBox is empty. Populating with default questions.');
       _questions = [
 // basic profile
-        Question(id: 'name', text: 'What is your name?'),
+
+Question(id: 'name', text: 'What is your name?'),
 
 Question(
   id: 'age',
@@ -63,7 +66,7 @@ Question(
   id: 'gender',
   text: 'What is your gender?',
   type: QuestionType.singleChoice,
-  options: ['Male', 'Female', 'Non-binary', 'Prefer not to say'],
+  options: ['Male', 'Female'],
 ),
 
 // intent and usage
@@ -90,6 +93,12 @@ Question(
     'Work with people or interaction',
     'A mix of both',
   ],
+),
+
+Question(
+  id: 'MBTI',
+  text: 'What is yout MBTI type?',
+  type: QuestionType.paragraph,
 ),
 
 Question(
@@ -148,44 +157,27 @@ Question(
 ),
 // Goal Discovery
 Question(
-  id: 'primary_goals',
-  text: 'What are your current goals?',
-  type: QuestionType.multiChoice,
-  options: [
-    'Improve productivity',
-    'Learn new skills',
-    'Advance career or studies',
-    'Build personal projects',
-    'Improve health or fitness',
-    'Financial growth',
-  ],
+  id: 'goal',
+  text: 'What are your goals you would like to achieve?',
+  type: QuestionType.paragraph,
 ),
 // willingness and resources
 Question(
   id: 'willingness',
   text: 'What are you willing to do to achieve your goals?',
-  type: QuestionType.multiChoice,
-  options: [
-    'Study or practice daily',
-    'Wake up early',
-    'Spend money on tools or courses',
-    'Sacrifice leisure time',
-    'Seek help or mentorship',
-  ],
+  type: QuestionType.paragraph,
+),
+
+Question(
+  id: 'path',
+  text: 'Do you have any path in mind for achieving your goals?',
+  type: QuestionType.paragraph,
 ),
 
 Question(
   id: 'resources',
-  text: 'What resources do you already have access to?',
-  type: QuestionType.multiChoice,
-  options: [
-    'Laptop or PC',
-    'Smartphone',
-    'Internet access',
-    'Online courses or books',
-    'Software or tools',
-    'Community or mentors',
-  ],
+  text: 'What resources do you have to achieve your goals?',
+  type: QuestionType.paragraph,
 ),
 // Time Constraints
 Question(
@@ -199,45 +191,45 @@ Question(
     'More than 4 hours',
   ],
 ),
+Question(
+  id: 'work-life',
+  text: 'Do you like to mix up fun activities with work?',
+  type: QuestionType.singleChoice,
+  options: [
+    'Yes',
+    'No',
+  ],
+),
+Question(
+  id: "hobies", 
+  text: "what are hobbies/activities that makes you happy?",
+  type: QuestionType.paragraph,
+),
 
 Question(
   id: 'productive_time',
   text: 'When do you feel most productive?',
-  type: QuestionType.singleChoice,
-  options: [
-    'Morning',
-    'Afternoon',
-    'Evening',
-    'Late night',
-  ],
+  type: QuestionType.paragraph,
 ),
 // Obstacle Motivation
 Question(
   id: 'main_obstacles',
   text: 'What usually prevents you from completing tasks?',
-  type: QuestionType.multiChoice,
-  options: [
-    'Procrastination',
-    'Lack of clarity',
-    'Low energy',
-    'Distractions (phone/social media)',
-    'Lack of motivation',
-    'Overloaded schedule',
-  ],
+  type: QuestionType.paragraph,
 ),
 
 Question(
-  id: 'motivation_type',
-  text: 'What motivates you the most?',
-  type: QuestionType.singleChoice,
-  options: [
-    'Seeing progress',
-    'Rewards',
-    'Positive feedback',
-    'Fear of failure',
-    'Long-term vision',
-  ],
+  id: "health", 
+  text: "How is your physical and mental health?",
+  type: QuestionType.paragraph,
 ),
+
+Question(
+  id: "previous shedule", 
+  text: "do you have a day to day shedule?",
+  type: QuestionType.paragraph),
+
+
 // Task Style Preferences
 Question(
   id: 'task_difficulty',
@@ -261,8 +253,25 @@ Question(
     'Ignore it unless I ask',
   ],
 ),
-Question(id: 'goal', text: 'What are your goals you would like to achieve?'),
+Question(
+  id: "shedule-tasks", 
+  text: "how would you like to shedule the tasks and reminders?",
+  type:QuestionType.singleChoice,
+  options: [
+    'Everyday at 11 pm',
+    'Everyday at 11 am',
+    ]
+    ),
 
+Question(
+  id: "shedule-reminders", 
+  text: "how would you like to shedule the tasks and reminders?",
+  type:QuestionType.singleChoice,
+  options: [
+    'Everyday at 11 pm',
+    'Everyday at 11 am',
+    ]
+    ),
       ];
       updateDatabase(); // Save default questions
       print('Default questions populated and updateDatabase called. Current questions count: ${_questions.length}');

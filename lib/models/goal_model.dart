@@ -30,6 +30,12 @@ class Goal extends HiveObject {
   @HiveField(7)
   DateTime? updatedAt;
 
+  @HiveField(8)
+  String importance;
+
+  @HiveField(9)
+  String urgency;
+
 
 
   Goal({
@@ -41,6 +47,8 @@ class Goal extends HiveObject {
     this.userId,
     this.createdAt,
     this.updatedAt,
+    this.importance = 'NOT IMPORTANT',
+    this.urgency = 'NOT URGENT',
   });
 
   Goal clone() {
@@ -53,6 +61,8 @@ class Goal extends HiveObject {
       userId: userId,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      importance: importance,
+      urgency: urgency,
     );
   }
     // Constructor to create a Goal from the existing List<dynamic> format
@@ -66,12 +76,14 @@ class Goal extends HiveObject {
       userId: data.length > 5 ? data[5] as String? : null,
       createdAt: data.length > 6 ? data[6] as DateTime? : null,
       updatedAt: data.length > 7 ? data[7] as DateTime? : null,
+      importance: data.length > 8 ? data[8] as String? ?? 'NOT IMPORTANT' : 'NOT IMPORTANT',
+      urgency: data.length > 9 ? data[9] as String? ?? 'NOT URGENT' : 'NOT URGENT',
     );
   }
 
   // Method to convert a Goal object back to the List<dynamic> format for Hive storage
   List<dynamic> toHiveList() {
-    return [title, description, targetDate, isCompleted, id, userId, createdAt, updatedAt];
+    return [title, description, targetDate, isCompleted, id, userId, createdAt, updatedAt, importance, urgency];
   }
 
   @override

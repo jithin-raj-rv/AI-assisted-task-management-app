@@ -413,6 +413,23 @@ class _UserInfoCollectionDialogState extends ConsumerState<UserInfoCollectionDia
           },
         );
 
+      case QuestionType.paragraph:
+        return TextFormField(
+          initialValue: _userResponses[question.id] ?? '',
+          decoration: InputDecoration(
+            labelText: question.text,
+            border: const OutlineInputBorder(),
+            alignLabelWithHint: true,
+          ),
+          maxLines: 5,
+          keyboardType: TextInputType.multiline,
+          onChanged: (value) {
+            setState(() {
+              _userResponses[question.id] = value;
+            });
+          },
+        );
+
       case QuestionType.singleChoice:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

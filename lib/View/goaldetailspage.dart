@@ -42,15 +42,19 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
         controller: _goalController,
         initialDescription: widget.goal.description,
         initialTargetDate: widget.goal.targetDate,
-        onSave: (name, description, dueDate, iscompleted) {
+        initialImportance: widget.goal.importance == 'IMPORTANT',
+        initialUrgency: widget.goal.urgency == 'URGENT',
+        onSave: (name, description, dueDate, isCompleted, importance, urgency) {
           final updatedGoal = Goal(
             title: name,
             description: description,
             targetDate: dueDate!,
             isCompleted: widget.goal.isCompleted,
+            importance: importance,
+            urgency: urgency,
           );
           ref.read(goalsPageViewModelProvider.notifier).updateGoal(
-                widget.goal.title,
+                widget.goal.id!,
                 updatedGoal,
               );
           _goalController.clear();
@@ -97,6 +101,34 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
             Text(
               widget.goal.description,
               style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  'Importance: ${widget.goal.importance}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: widget.goal.importance == 'VERY IMPORTANT' 
+                        ? Colors.red 
+                        : widget.goal.importance == 'IMPORTANT' 
+                            ? Colors.orange 
+                            : Colors.grey,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Urgency: ${widget.goal.urgency}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: widget.goal.urgency == 'VERY URGENT' 
+                        ? Colors.red 
+                        : widget.goal.urgency == 'URGENT' 
+                            ? Colors.orange 
+                            : Colors.grey,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Text(

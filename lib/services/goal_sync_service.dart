@@ -42,6 +42,8 @@ class GoalSyncService {
         userId: g['user_id'],
         createdAt: g['created_at'] != null ? DateTime.parse(g['created_at']) : null,
         updatedAt: g['updated_at'] != null ? DateTime.parse(g['updated_at']) : null,
+        importance: g['importance'] ?? 'NOT IMPORTANT',
+        urgency: g['urgency'] ?? 'NOT URGENT',
       )).toList();
 
       final box = await Hive.openBox<Goal>('goals');
@@ -98,6 +100,8 @@ class GoalSyncService {
               userId: record['user_id'],
               createdAt: record['created_at'] != null ? DateTime.parse(record['created_at']) : null,
               updatedAt: record['updated_at'] != null ? DateTime.parse(record['updated_at']) : null,
+              importance: record['importance'] ?? 'NOT IMPORTANT',
+              urgency: record['urgency'] ?? 'NOT URGENT',
             );
             print('[GoalSync] Created goal object: $goal');
             box.put(goal.id!, goal);
@@ -136,6 +140,8 @@ class GoalSyncService {
       'description': goal.description,
       'target_date': goal.targetDate.toIso8601String(),
       'is_completed': goal.isCompleted,
+      'importance': goal.importance,
+      'urgency': goal.urgency,
     };
 
     await _supabase.from('goals').insert(supabaseData);
@@ -153,6 +159,8 @@ class GoalSyncService {
       'description': goal.description,
       'target_date': goal.targetDate.toIso8601String(),
       'is_completed': goal.isCompleted,
+      'importance': goal.importance,
+      'urgency': goal.urgency,
       'updated_at': DateTime.now().toIso8601String(),
     };
 

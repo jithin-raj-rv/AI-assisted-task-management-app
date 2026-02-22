@@ -63,9 +63,49 @@ class GoalTile extends ConsumerWidget {
               children: [
                 // text with gradient
                 Smalltextgradient(text: goal.title, fontsize: 20),
-                Row( // New Row to group deadline and icon
+              Row( // New Row to group deadline and icon
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Importance indicator
+                    if (goal.importance != 'NOT IMPORTANT')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: goal.importance == 'VERY IMPORTANT' 
+                              ? Colors.red 
+                              : Colors.orange,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          goal.importance == 'VERY IMPORTANT' ? '!!!' : '!',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    // Urgency indicator
+                    if (goal.urgency != 'NOT URGENT')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: goal.urgency == 'VERY URGENT' 
+                              ? Colors.red 
+                              : Colors.orange,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          goal.urgency == 'VERY URGENT' ? '>>>' : '>>',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     Text(
                       'Due: ${DateFormat('MMM dd, yyyy').format(goal.targetDate)}',
                       style: TextStyle(

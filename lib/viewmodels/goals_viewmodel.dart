@@ -101,6 +101,8 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
       description: goal.description,
       targetDate: goal.targetDate,
       isCompleted: goal.isCompleted,
+      importance: goal.importance,
+      urgency: goal.urgency,
     );
 
     await _syncService.createGoal(goalWithId);

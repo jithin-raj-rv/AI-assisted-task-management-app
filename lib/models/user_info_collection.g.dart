@@ -64,6 +64,8 @@ class QuestionTypeAdapter extends TypeAdapter<QuestionType> {
         return QuestionType.singleChoice;
       case 3:
         return QuestionType.multiChoice;
+      case 4:
+        return QuestionType.paragraph;
       default:
         return QuestionType.text;
     }
@@ -83,6 +85,9 @@ class QuestionTypeAdapter extends TypeAdapter<QuestionType> {
         break;
       case QuestionType.multiChoice:
         writer.writeByte(3);
+        break;
+      case QuestionType.paragraph:
+        writer.writeByte(4);
         break;
     }
   }
