@@ -128,7 +128,13 @@ String _generateInitialPrompt() {
   }
 
   prompt.writeln(
-    "\nBased on this, analyze my personality, goals, constraints, clear all existing goals, personality,additional information, add new goals, personality,additional information based on the quiz. don't ask questions. just do it"
+    """\nBased on this quiz information, 
+    extract and save all information into correct fields,
+    focus on goal creation, if the goals and steps aren't clear, 
+    add additional info to ask the user for more info.
+    create timer prompt for task creation, 
+    and goal creation with appropriate prompt based on this information.
+    don't ask questions. just do it"""
   );
 
   return prompt.toString();
@@ -173,7 +179,7 @@ String _generateInitialPrompt() {
                   print('Gemini Initial Response: $geminiResponse');
 
 
-                  Navigator.pushReplacementNamed(context, '/home', arguments: {'page': 5, 'prompt': 'Optimize my app and daily routine based on the information I just provided. Suggest improvements, new habits, and personalized recommendations.'}); // Navigate to home with chat page and optimization prompt
+                  Navigator.pushReplacementNamed(context, '/home', arguments: {'page': 5, 'prompt': 'Optimize my app and daily tasks based on the information . Suggest improvements, new habits, and personalized recommendations, so I can achieve my goals more efficiently.'}); // Navigate to home with chat page and optimization prompt
                 },
                 child: const Text('Submit'),
               ),
