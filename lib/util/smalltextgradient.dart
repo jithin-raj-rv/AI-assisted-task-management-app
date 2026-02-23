@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
 
 class Smalltextgradient extends ConsumerWidget {
-  const Smalltextgradient({super.key, required this.text,required this.fontsize});
+  const Smalltextgradient({super.key, required this.text, required this.fontsize, this.maxLines = 1, this.overflow = TextOverflow.clip});
   final String text;
   final double fontsize;
+  final int maxLines;
+  final TextOverflow overflow;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appTheme = ref.watch(themeProvider);
@@ -19,7 +21,10 @@ class Smalltextgradient extends ConsumerWidget {
         ).createShader(bounds);
       },
       child: Text(
-        text,style: TextStyle(fontSize: fontsize,color: Colors.white),// important for ShaderMask
+        text,
+        style: TextStyle(fontSize: fontsize, color: Colors.white),
+        maxLines: maxLines,
+        overflow: overflow,
       ),
     );
   }

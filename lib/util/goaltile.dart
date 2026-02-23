@@ -62,7 +62,13 @@ class GoalTile extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // text with gradient
-                Smalltextgradient(text: goal.title, fontsize: 20),
+                Flexible(
+                  child: Smalltextgradient(
+                    text: goal.title, 
+                    fontsize: 20, 
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               Row( // New Row to group deadline and icon
                   mainAxisSize: MainAxisSize.min,
                   children: [
