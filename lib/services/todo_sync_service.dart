@@ -149,7 +149,7 @@ class TodoSyncService {
       'importance': todo.importance,
       'urgency': todo.urgency,
       'description': todo.description,
-      'due_date': todo.dueDate?.toIso8601String(),
+      'due_date': todo.dueDate?.toUtc().toIso8601String(),
     };
 
     await _supabase.from('todos').insert(supabaseData);
@@ -167,7 +167,7 @@ class TodoSyncService {
       'importance': todo.importance,
       'urgency': todo.urgency,
       'description': todo.description,
-      'due_date': todo.dueDate?.toIso8601String(),
+      'due_date': todo.dueDate?.toUtc().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
     };
 

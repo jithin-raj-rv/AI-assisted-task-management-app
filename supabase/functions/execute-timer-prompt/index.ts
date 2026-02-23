@@ -11,6 +11,160 @@ interface FunctionArgs {
   timerPromptId: string
 }
 
+// Helper function to convert time strings to UTC ISO timestamps
+// Converts IST times (Indian Standard Time, UTC+5:30) to UTC for storage
+// Also provides function to convert UTC to IST for AI prompts
+const IST_OFFSET_HOURS = 5;
+const IST_OFFSET_MINUTES = 30;
+
+/**
+ * Detect if the input timestamp is already in UTC
+ */
+function isUTC(timeValue: string): boolean {
+  const upperTime = timeValue.toUpperCase();
+  return (
+    upperTime.endsWith('Z') ||
+    upperTime.includes('+00') ||
+    upperTime.includes('+00:00') ||
+    upperTime.includes('-00') ||
+    upperTime.includes('-00:00') ||
+    upperTime.includes(' UTC')
+  );
+}
+
+/**
+ * Detect if the input timestamp is in IST (Indian Standard Time)
+ */
+function isIST(timeValue: string): boolean {
+  const upperTime = timeValue.toUpperCase();
+  return (
+    upperTime.includes('IST') ||
+    upperTime.includes('INDIA') ||
+    upperTime.includes('+05:30') ||
+    upperTime.includes('+05') ||
+    upperTime.includes('-05:30') ||
+    upperTime.includes('-05')
+  );
+}
+
+/**
+ * Convert UTC timestamp to IST for AI prompts
+ * Returns the timestamp in IST format (UTC+5:30)
+ */
+function formatTimestampForAI(utcTimestamp: string | undefined): string | undefined {
+  if (!utcTimestamp) return undefined;
+  
+  try {
+    const date = new Date(utcTimestamp);
+    if (isNaN(date.getTime())) return utcTimestamp;
+    
+    // Add IST offset to convert UTC to IST
+    const istDate = new Date(date.getTime() + (IST_OFFSET_HOURS * 60 * 60 * 1000) + (IST_OFFSET_MINUTES * 60 * 1000));
+    
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getDate()).padStart(2, '0');
+    const hours = String(istDate.getHours()).padStart(2, '0');
+    const minutes = String(istDate.getMinutes()).padStart(2, '0');
+    const seconds = String(istDate.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`;
+  } catch {
+    return utcTimestamp;
+  }
+}
+
+/**
+ * Convert time strings to UTC ISO timestamps for storage
+ * Converts IST times to UTC, keeps UTC as-is
+ */
+function formatTimestamp(timeValue: string | undefined): string | undefined {
+  if (!timeValue) return undefined;
+  
+  // Check if it's already a full ISO timestamp with UTC timezone - return as-is
+  if (timeValue.includes('T') && isUTC(timeValue)) {
+    return timeValue;
+  }
+  
+  // Check if it's IST and convert to UTC
+  if (isIST(timeValue)) {
+    // Remove timezone indicators from the string for parsing
+    const cleanTimeValue = timeValue.replace(/IST|India|\+05:30|\+05|\-05:30|\-05/gi, '').trim();
+    
+    // Check if it's a time-only format (HH:MM:SS or HH:MM, with optional AM/PM)
+    const timeWithAMPMRegex = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+    const match = cleanTimeValue.match(timeWithAMPMRegex);
+    
+    if (match) {
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const seconds = match[3] ? parseInt(match[3], 10) : 0;
+      const ampm = match[4]?.toUpperCase();
+      
+      // Convert 12-hour format to 24-hour format
+      if (ampm === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (ampm === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      // Create a date object with the time in IST
+      const now = new Date();
+      const istDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds);
+      
+      // Convert IST to UTC by subtracting the offset
+      const utcDate = new Date(istDate.getTime() - (IST_OFFSET_HOURS * 60 * 60 * 1000) - (IST_OFFSET_MINUTES * 60 * 1000));
+      
+      const year = utcDate.getFullYear();
+      const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+      const day = String(utcDate.getDate()).padStart(2, '0');
+      const utcHours = String(utcDate.getHours()).padStart(2, '0');
+      const utcMinutes = String(utcDate.getMinutes()).padStart(2, '0');
+      const utcSeconds = String(utcDate.getSeconds()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T${utcHours}:${utcMinutes}:${utcSeconds}Z`;
+    }
+  }
+  
+  // Check if it's a time-only format without explicit timezone - assume IST
+  const cleanTimeValue = timeValue.replace(/IST|India|utc|UTC/gi, '').trim();
+  const timeWithAMPMRegex = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+  const match = cleanTimeValue.match(timeWithAMPMRegex);
+  
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const seconds = match[3] ? parseInt(match[3], 10) : 0;
+    const ampm = match[4]?.toUpperCase();
+    
+    // Convert 12-hour format to 24-hour format
+    if (ampm === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (ampm === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    // Create a date object with the time in IST
+    const now = new Date();
+    const istDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds);
+    
+    // Convert IST to UTC by subtracting the offset
+    const utcDate = new Date(istDate.getTime() - (IST_OFFSET_HOURS * 60 * 60 * 1000) - (IST_OFFSET_MINUTES * 60 * 1000));
+    
+    const year = utcDate.getFullYear();
+    const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+    const day = String(utcDate.getDate()).padStart(2, '0');
+    const utcHours = String(utcDate.getHours()).padStart(2, '0');
+    const utcMinutes = String(utcDate.getMinutes()).padStart(2, '0');
+    const utcSeconds = String(utcDate.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${utcHours}:${utcMinutes}:${utcSeconds}Z`;
+  }
+  
+  // Return as-is if we can't parse it
+  return timeValue;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -72,10 +226,20 @@ serve(async (req) => {
       throw new Error('Failed to fetch user data')
     }
 
-    const todolist = todosRes.data || []
-    const goals = goalsRes.data || []
+    // Convert UTC timestamps to IST for AI
+    const todolist = (todosRes.data || []).map((item: any) => ({
+      ...item,
+      due_date: formatTimestampForAI(item.due_date)
+    }))
+    const goals = (goalsRes.data || []).map((item: any) => ({
+      ...item,
+      target_date: formatTimestampForAI(item.target_date)
+    }))
     const goalSteps = goalStepsRes.data || []
-    const timerPrompts = timerPromptsRes.data || []
+    const timerPrompts = (timerPromptsRes.data || []).map((item: any) => ({
+      ...item,
+      scheduled_time: formatTimestampForAI(item.scheduled_time)
+    }))
     const feedback = feedbackRes.data || []
     const personalityTraits = personalityRes.data || []
     const additionalInfo = additionalInfoRes.data || []
@@ -500,7 +664,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             importance: args.importance || 'NOT IMPORTANT',
             urgency: args.urgency || 'NOT URGENT',
             description: args.description || '',
-            due_date: args.dueDate,
+            due_date: formatTimestamp(args.dueDate),
             is_completed: args.isCompleted || false
           })
           if (addTodoError) throw addTodoError
@@ -517,7 +681,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             importance: args.newImportance,
             urgency: args.newUrgency,
             description: args.newDescription,
-            due_date: args.newDueDate,
+            due_date: formatTimestamp(args.newDueDate),
             is_completed: args.newIsCompleted
           }).eq('id', args.taskId).eq('user_id', userId)
           if (modifyTodoError) throw modifyTodoError
@@ -529,7 +693,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             user_id: userId,
             title: args.title || 'Untitled Goal',
             description: args.description || '',
-            target_date: args.targetDate,
+            target_date: formatTimestamp(args.targetDate),
             is_completed: args.isCompleted || false
           })
           if (addGoalError) throw addGoalError
@@ -544,7 +708,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
           const { error: modifyGoalError } = await supabaseClient.from('goals').update({
             title: args.newTitle,
             description: args.newDescription,
-            target_date: args.newTargetDate,
+            target_date: formatTimestamp(args.newTargetDate),
             is_completed: args.newIsCompleted
           }).eq('id', args.goalId).eq('user_id', userId)
           if (modifyGoalError) throw modifyGoalError
@@ -556,7 +720,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
             user_id: userId,
             prompt: args.prompt || 'No prompt',
             response: args.response || '',
-            scheduled_time: args.scheduledTime,
+            scheduled_time: formatTimestamp(args.scheduledTime),
             is_recurring: args.isRecurring || false,
             weekdays: args.weekdays || [],
             sent: args.sent || false
@@ -573,7 +737,7 @@ Process this timer prompt automatically and execute the appropriate actions.`
           const { error: modifyTimerError } = await supabaseClient.from('timer_prompts').update({
             prompt: args.newPrompt,
             response: args.newResponse,
-            scheduled_time: args.newScheduledTime,
+            scheduled_time: formatTimestamp(args.newScheduledTime),
             is_recurring: args.newIsRecurring,
             weekdays: args.newWeekdays,
             sent: args.newSent
@@ -682,8 +846,8 @@ Process this timer prompt automatically and execute the appropriate actions.`
             user_id: userId,
             title: args.title || 'Untitled Reminder',
             body: args.body || '',
-            scheduled_date: args.scheduledDate,
-            payload: args.title || 'Untitled Reminder', // Using title as payload for now
+            scheduled_date: formatTimestamp(args.scheduledDate),
+            payload: args.title || 'Untitled Reminder',
             reminder_type: args.reminderType || 'basic',
             options: args.options ? JSON.stringify(args.options) : null,
             expected_answer: args.expectedAnswer || '',
@@ -701,8 +865,8 @@ Process this timer prompt automatically and execute the appropriate actions.`
           const { error: modifyReminderError } = await supabaseClient.from('reminders').update({
             title: args.newTitle,
             body: args.newBody,
-            scheduled_date: args.newScheduledDate,
-            payload: args.newTitle, // Update payload as well
+            scheduled_date: formatTimestamp(args.newScheduledDate),
+            payload: args.newTitle,
             reminder_type: args.newReminderType,
             options: args.newOptions ? JSON.stringify(args.newOptions) : null,
             expected_answer: args.newExpectedAnswer,

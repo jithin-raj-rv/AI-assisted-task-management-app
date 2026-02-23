@@ -52,7 +52,7 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
     _isUrgent = widget.initialUrgency;
     _descriptionController =
         TextEditingController(text: widget.initialDescription);
-    _selectedDueDate = widget.initialDueDate;
+    _selectedDueDate = widget.initialDueDate?.toLocal();
     if (_selectedDueDate != null) {
       _selectedTime = TimeOfDay.fromDateTime(_selectedDueDate!);
     }

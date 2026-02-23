@@ -87,9 +87,9 @@ Future<void> showTimerPromptDialog({
     text: existingPrompt?.prompt ?? '',
   );
 
-  DateTime? selectedDate = existingPrompt?.scheduledTime;
+  DateTime? selectedDate = existingPrompt?.scheduledTime.toLocal();
   TimeOfDay? selectedTime = existingPrompt != null
-      ? TimeOfDay.fromDateTime(existingPrompt.scheduledTime)
+      ? TimeOfDay.fromDateTime(existingPrompt.scheduledTime.toLocal())
       : TimeOfDay.now();
   List<DateTime> scheduledDateTimes = [];
   String repeatOption = 'Never';
@@ -245,7 +245,7 @@ Future<void> showTimerPromptDialog({
                     spacing: 8,
                     children: scheduledDateTimes
                       .map((dt) => Chip(
-                            label: Text('${DateFormat('MMM dd, HH:mm').format(dt.toLocal())} (IST)'),
+                            label: Text('${DateFormat('MMM dd, HH:mm').format(dt)} (IST)'),
                             onDeleted: () => setState(() => scheduledDateTimes.remove(dt)),
                           ))
                       .toList(),

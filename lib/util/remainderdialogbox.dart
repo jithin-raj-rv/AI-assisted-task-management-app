@@ -57,12 +57,9 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
   void initState() {
     super.initState();
     _descriptionController = TextEditingController(text: widget.initialDescription);
-    _selectedReminderDate = widget.initialReminderDate;
+    _selectedReminderDate = widget.initialReminderDate?.toLocal();
     if (_selectedReminderDate != null) {
       _selectedTime = TimeOfDay.fromDateTime(_selectedReminderDate!);
-      // If editing, add the initial date to the list so it's visible/editable
-      // However, for better UX in edit mode, we might just want to show it in the pickers.
-      // Let's keep the list empty initially unless we want to support multi-edit explicitly.
     }
 
     _selectedReminderType = widget.initialReminderType;
@@ -241,8 +238,7 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
                   child: Wrap(
                     spacing: 8.0,
                     children: _scheduledDateTimes.map((dateTime) {
-                      final istTime = dateTime.toLocal();
-                      final formattedTime = DateFormat('MMM dd, HH:mm').format(istTime);
+                      final formattedTime = DateFormat('MMM dd, HH:mm').format(dateTime);
                       return Chip(
                         label: Text(
                           '$formattedTime (IST)',
