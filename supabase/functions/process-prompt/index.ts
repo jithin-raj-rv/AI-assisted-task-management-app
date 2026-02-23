@@ -12,6 +12,38 @@ interface FunctionArgs {
   chatHistory?: Array<{role: 'user' | 'model', content: string}>
 }
 
+// Helper function to convert time-only strings to full ISO timestamps
+// Handles formats like "23:00:00" -> "2026-02-23T23:00:00Z"
+function formatTimestamp(timeValue: string | undefined): string | undefined {
+  if (!timeValue) return undefined;
+  
+  // Check if it's already a full ISO timestamp
+  if (timeValue.includes('T') || timeValue.includes('-')) {
+    return timeValue;
+  }
+  
+  // Check if it's a time-only format (HH:MM:SS or HH:MM)
+  const timeOnlyRegex = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+  const match = timeValue.match(timeOnlyRegex);
+  
+  if (match) {
+    const now = new Date();
+    const hours = match[1].padStart(2, '0');
+    const minutes = match[2].padStart(2, '0');
+    const seconds = match[3] ? match[3].padStart(2, '0') : '00';
+    
+    // Create ISO string with current date
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
+  }
+  
+  // Return as-is if we can't parse it
+  return timeValue;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -119,7 +151,9 @@ For reminders: use addReminder, deleteReminder, modifyReminder., use this to sch
 Help the user figure out of how to achieve goals if they are confused.
 Collect user info and store in personality, additional info as necessary.
 when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
-When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.`
+When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.
+You are very good at storing and retrieving user info in additional info. if goal is not clear, you add additional info to ask the user for more info. and delete it once everything is clear 
+You are very good at storing information to understand the user.`
     // Build conversation history (only user/model messages, no system messages)
     let conversationHistory = chatHistory
       ?.filter(msg => msg.role && (msg.role === 'user' || msg.role === 'model') && msg.content)
@@ -621,7 +655,7 @@ When the user doesn't have any meaningfull goal, help them define the goal, step
             user_id: userId,
             prompt: args.prompt || 'No prompt',
             response: args.response || '',
-            scheduled_time: args.scheduledTime,
+            scheduled_time: formatTimestamp(args.scheduledTime),
             is_recurring: args.isRecurring || false,
             weekdays: args.weekdays || [],
             sent: args.sent || false
@@ -638,7 +672,7 @@ When the user doesn't have any meaningfull goal, help them define the goal, step
           const { error: modifyTimerError } = await supabaseClient.from('timer_prompts').update({
             prompt: args.newPrompt,
             response: args.newResponse,
-            scheduled_time: args.newScheduledTime,
+            scheduled_time: formatTimestamp(args.newScheduledTime),
             is_recurring: args.newIsRecurring,
             weekdays: args.newWeekdays,
             sent: args.newSent

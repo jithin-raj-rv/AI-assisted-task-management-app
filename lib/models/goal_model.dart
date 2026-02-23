@@ -90,4 +90,16 @@ class Goal extends HiveObject {
   String toString() {
     return 'Goal(title: $title, description: $description, targetDate: $targetDate, isCompleted: $isCompleted)';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is Goal &&
+        other.importance == importance &&
+        other.urgency == urgency;
+  }
+
+  @override
+  int get hashCode => importance.hashCode ^ urgency.hashCode;
 }
