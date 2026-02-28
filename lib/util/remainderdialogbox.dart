@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/button.dart';
-import 'package:to_do_list/models/scheduled_notification_model.dart'; // Import the model
+import 'package:to_do_list/util/gradienttextfield.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
+import 'package:to_do_list/models/scheduled_notification_model.dart';
 
-class RemainderDialogBox extends StatefulWidget {
+class RemainderDialogBox extends ConsumerStatefulWidget {
   const RemainderDialogBox({
     super.key,
     required this.controller,
@@ -11,10 +15,10 @@ class RemainderDialogBox extends StatefulWidget {
     required this.onSave,
     this.initialDescription,
     this.initialReminderDate,
-    this.initialReminderType = ReminderType.basic, // New
-    this.initialOptions, // New
-    this.initialExpectedAnswer, // New
-    this.initialAiPrompt, // New
+    this.initialReminderType = ReminderType.basic,
+    this.initialOptions,
+    this.initialExpectedAnswer,
+    this.initialAiPrompt,
   });
 
   final TextEditingController controller;
@@ -24,29 +28,28 @@ class RemainderDialogBox extends StatefulWidget {
   final Function(
     String name,
     String description,
-    List<DateTime> reminderDateTimes, // Changed to List
-    ReminderType reminderType, // New
-    List<String>? options, // New
-    String? expectedAnswer, // New
-    String? aiPrompt, // New
+    List<DateTime> reminderDateTimes,
+    ReminderType reminderType,
+    List<String>? options,
+    String? expectedAnswer,
+    String? aiPrompt,
   ) onSave;
 
-  final ReminderType initialReminderType; // New
-  final List<String>? initialOptions; // New
-  final String? initialExpectedAnswer; // New
-  final String? initialAiPrompt; // New
+  final ReminderType initialReminderType;
+  final List<String>? initialOptions;
+  final String? initialExpectedAnswer;
+  final String? initialAiPrompt;
 
   @override
-  State<RemainderDialogBox> createState() => _RemainderDialogBoxState();
+  ConsumerState<RemainderDialogBox> createState() => _RemainderDialogBoxState();
 }
 
-class _RemainderDialogBoxState extends State<RemainderDialogBox> {
+class _RemainderDialogBoxState extends ConsumerState<RemainderDialogBox> {
   late TextEditingController _descriptionController;
   DateTime? _selectedReminderDate;
   TimeOfDay? _selectedTime;
-  final List<DateTime> _scheduledDateTimes = []; // List to store multiple times
+  final List<DateTime> _scheduledDateTimes = [];
 
-  // New state variables for reminder types
   late ReminderType _selectedReminderType;
   late TextEditingController _newOptionController;
   late List<String> _options;
@@ -140,61 +143,42 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
 
   @override
   Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
     return AlertDialog(
-      backgroundColor: Colors.grey,
+      scrollable: true,
+      backgroundColor: appTheme.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       content: Container(
-        height: _selectedReminderType == ReminderType.option ? 550 : 450, // Dynamic height
+        width: double.maxFinite,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Colors.grey,
         ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                maxLength: 30,
-                controller: widget.controller,
-                cursorColor: Colors.white,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Reminder Title',
-                  hintStyle: TextStyle(color: Colors.white),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                  ),
-                ),
-              ),
-
-              TextField(
-                maxLength: 100,
-                controller: _descriptionController,
-                cursorColor: Colors.white,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Description (optional)',
-                  hintStyle: TextStyle(color: Colors.white),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                  ),
-                ),
-              ),
+              Gradienttextfield(controller: widget.controller, text: 'Reminder Title'),
+              const SizedBox(height: 16),
+              Gradienttextfield(controller: _descriptionController, text: 'Description (optional)'),
+              const SizedBox(height: 16),
 
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      _selectedReminderDate == null
+                    child: Smalltextgradient(
+                      fontsize: 15,
+                      text: _selectedReminderDate == null
                           ? 'No reminder date selected'
                           : 'Date: ${DateFormat('MMM dd, yyyy').format(_selectedReminderDate!)}',
-                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                   TextButton(
                     onPressed: () => _selectDate(context),
-                    child: const Text(
-                      'Select Date',
-                      style: TextStyle(color: Colors.white),
+                    child: const Smalltextgradient(
+                      text: 'Select Date',
+                      fontsize: 15,
                     ),
                   ),
                 ],
@@ -203,18 +187,18 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      _selectedTime == null
+                    child: Smalltextgradient(
+                      fontsize: 15,
+                      text: _selectedTime == null
                           ? 'No time selected'
                           : 'Time: ${_selectedTime!.format(context)}',
-                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                   TextButton(
                     onPressed: () => _selectTime(context),
-                    child: const Text(
-                      'Select Time',
-                      style: TextStyle(color: Colors.white),
+                    child: const Smalltextgradient(
+                      text: 'Select Time',
+                      fontsize: 15,
                     ),
                   ),
                 ],
@@ -222,13 +206,22 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
 
               const SizedBox(height: 10),
               // Add Time Button
-              ElevatedButton(
-                onPressed: _addDateTime,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[800],
-                  foregroundColor: Colors.white,
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [appTheme.primary, appTheme.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text("Add Date & Time"),
+                child: ElevatedButton(
+                  onPressed: _addDateTime,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("Add Date & Time"),
+                ),
               ),
 
               // Display selected times
@@ -242,8 +235,9 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
                       return Chip(
                         label: Text(
                           '$formattedTime (IST)',
-                          style: const TextStyle(fontSize: 12),
+                          style: TextStyle(fontSize: 12, color: appTheme.background),
                         ),
+                        backgroundColor: appTheme.primary,
                         onDeleted: () {
                           setState(() {
                             _scheduledDateTimes.remove(dateTime);
@@ -259,26 +253,39 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Reminder Type:', style: TextStyle(color: Colors.white)),
-                  DropdownButton<ReminderType>(
-                    value: _selectedReminderType,
-                    dropdownColor: Colors.grey[700],
-                    style: const TextStyle(color: Colors.white),
-                    onChanged: (ReminderType? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedReminderType = newValue;
-                        });
-                      }
-                    },
-                    items: ReminderType.values.map<DropdownMenuItem<ReminderType>>(
-                      (ReminderType type) {
-                        return DropdownMenuItem<ReminderType>(
-                          value: type,
-                          child: Text(type.toString().split('.').last),
-                        );
+                  const Smalltextgradient(
+                    text: 'Reminder Type:',
+                    fontsize: 15,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [appTheme.primary, appTheme.secondary],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<ReminderType>(
+                      value: _selectedReminderType,
+                      dropdownColor: appTheme.background,
+                      style: TextStyle(color: appTheme.background, fontWeight: FontWeight.bold),
+                      underline: const SizedBox(),
+                      onChanged: (ReminderType? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedReminderType = newValue;
+                          });
+                        }
                       },
-                    ).toList(),
+                      items: ReminderType.values.map<DropdownMenuItem<ReminderType>>(
+                        (ReminderType type) {
+                          return DropdownMenuItem<ReminderType>(
+                            value: type,
+                            child: Text(type.toString().split('.').last),
+                          );
+                        },
+                      ).toList(),
+                    ),
                   ),
                 ],
               ),
@@ -286,32 +293,21 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
 
               // Conditional UI for Option Reminders
               if (_selectedReminderType == ReminderType.option) ...[
-                TextField(
-                  controller: _newOptionController,
-                  cursorColor: Colors.white,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Add an option',
-                    hintStyle: const TextStyle(color: Colors.white),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      onPressed: _addOption,
-                    ),
+                Gradienttextfield(controller: _newOptionController, text: 'Add an option'),
+                if (_newOptionController.text.isNotEmpty)
+                  IconButton(
+                    icon: Icon(Icons.add_circle, color: appTheme.primary),
+                    onPressed: _addOption,
                   ),
-                  onSubmitted: (_) => _addOption(),
-                ),
                 if (_options.isNotEmpty)
                   Column(
                     children: _options.asMap().entries.map((entry) {
                       int index = entry.key;
                       String option = entry.value;
                       return ListTile(
-                        title: Text(option, style: const TextStyle(color: Colors.white)),
+                        title: Smalltextgradient(text: option, fontsize: 14),
                         trailing: IconButton(
-                          icon: const Icon(Icons.remove_circle, color: Colors.red),
+                          icon: Icon(Icons.remove_circle, color: appTheme.tertiary),
                           onPressed: () => _removeOption(index),
                         ),
                       );
@@ -321,54 +317,32 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
 
               // Conditional UI for Answer Back Reminders
               if (_selectedReminderType == ReminderType.answerBack)
-                TextField(
-                  controller: _expectedAnswerController,
-                  cursorColor: Colors.white,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Expected Answer (optional)',
-                    hintStyle: TextStyle(color: Colors.white),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                ),
+                Gradienttextfield(controller: _expectedAnswerController, text: 'Expected Answer (optional)'),
 
               // Conditional UI for AI Prompt Reminders
               if (_selectedReminderType == ReminderType.aiPrompt)
-                TextField(
-                  controller: _aiPromptController,
-                  cursorColor: Colors.white,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'AI Prompt (e.g., Give me a quote)',
-                    hintStyle: TextStyle(color: Colors.white),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                ),
+                Gradienttextfield(controller: _aiPromptController, text: 'AI Prompt (e.g., Give me a quote)'),
 
-              const SizedBox(height: 20), // Add some spacing
+              const SizedBox(height: 20),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Buttonstyl(
-                    savetext: 'Save',
-                    onPressed: () {
-                      if (_selectedReminderType == ReminderType.option &&
-                          _newOptionController.text.trim().isNotEmpty) {
-                        _options.add(_newOptionController.text.trim());
-                      }
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Buttonstyl(
+                      savetext: 'Save',
+                      onPressed: () {
+                        if (_selectedReminderType == ReminderType.option &&
+                            _newOptionController.text.trim().isNotEmpty) {
+                          _options.add(_newOptionController.text.trim());
+                        }
 
-                      // Prepare the list of dates to save
-                      List<DateTime> finalDateTimes = List.from(_scheduledDateTimes);
+                        List<DateTime> finalDateTimes = List.from(_scheduledDateTimes);
 
-                      // If the list is empty, try to use the currently selected values in the pickers
-                      if (finalDateTimes.isEmpty && _selectedReminderDate != null) {
-                         DateTime dt;
-                         if (_selectedTime != null) {
+                        if (finalDateTimes.isEmpty && _selectedReminderDate != null) {
+                          DateTime dt;
+                          if (_selectedTime != null) {
                             dt = DateTime(
                               _selectedReminderDate!.year,
                               _selectedReminderDate!.month,
@@ -376,36 +350,38 @@ class _RemainderDialogBoxState extends State<RemainderDialogBox> {
                               _selectedTime!.hour,
                               _selectedTime!.minute,
                             );
-                         } else {
+                          } else {
                             dt = DateTime(
                               _selectedReminderDate!.year,
                               _selectedReminderDate!.month,
                               _selectedReminderDate!.day,
                             );
-                         }
-                         finalDateTimes.add(dt.toUtc());
-                      }
+                          }
+                          finalDateTimes.add(dt.toUtc());
+                        }
 
-                      widget.onSave(
-                        widget.controller.text,
-                        _descriptionController.text,
-                        finalDateTimes,
-                        _selectedReminderType,
-                        _selectedReminderType == ReminderType.option ? _options : null,
-                        _selectedReminderType == ReminderType.answerBack
-                            ? _expectedAnswerController.text
-                            : null,
-                        _selectedReminderType == ReminderType.aiPrompt
-                            ? _aiPromptController.text
-                            : null,
-                      );
-                    },
-                  ),
-                  Buttonstyl(
-                    savetext: 'Cancel',
-                    onPressed: widget.onCancel,
-                  ),
-                ],
+                        widget.onSave(
+                          widget.controller.text,
+                          _descriptionController.text,
+                          finalDateTimes,
+                          _selectedReminderType,
+                          _selectedReminderType == ReminderType.option ? _options : null,
+                          _selectedReminderType == ReminderType.answerBack
+                              ? _expectedAnswerController.text
+                              : null,
+                          _selectedReminderType == ReminderType.aiPrompt
+                              ? _aiPromptController.text
+                              : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Buttonstyl(
+                      savetext: 'Cancel',
+                      onPressed: widget.onCancel,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

@@ -11,6 +11,28 @@ import 'package:to_do_list/util/offline_utils.dart';
 import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 
+class GoalCategory {
+  final String importance;
+  final String urgency;
+
+  GoalCategory({
+    required this.importance,
+    required this.urgency,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is GoalCategory &&
+        other.importance == importance &&
+        other.urgency == urgency;
+  }
+
+  @override
+  int get hashCode => importance.hashCode ^ urgency.hashCode;
+}
+
 int getGoalCategoryScore(String importance, String urgency) {
   if (importance == 'IMPORTANT' && urgency == 'URGENT') {
     return 1;
@@ -24,14 +46,14 @@ int getGoalCategoryScore(String importance, String urgency) {
   return 4; // NOT IMPORTANT, NOT URGENT
 }
 
-List<Map<String, String>> deriveGoalCategories(List<Goal> goals) {
+List<GoalCategory> deriveGoalCategories(List<Goal> goals) {
   final categories = goals
-      .map((g) => {'importance': g.importance, 'urgency': g.urgency})
+      .map((g) => GoalCategory(importance: g.importance, urgency: g.urgency))
       .toSet()
       .toList();
   categories.sort((a, b) {
-    final scoreA = getGoalCategoryScore(a['importance']!, a['urgency']!);
-    final scoreB = getGoalCategoryScore(b['importance']!, b['urgency']!);
+    final scoreA = getGoalCategoryScore(a.importance, a.urgency);
+    final scoreB = getGoalCategoryScore(b.importance, b.urgency);
     return scoreA.compareTo(scoreB);
   });
   return categories;
@@ -170,9 +192,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           child: ListView.builder(
             itemCount: sortList.length,
             itemBuilder: (context, outerIndex) {
-              final category = sortList[outerIndex];
-              final String importance = category['importance']!;
-              final String urgency = category['urgency']!;
+              final GoalCategory category = sortList[outerIndex];
+              final String importance = category.importance;
+              final String urgency = category.urgency;
 
               final List<Goal> matchingGoals = goals.where((goal) {
                 return goal.importance == importance && goal.urgency == urgency;

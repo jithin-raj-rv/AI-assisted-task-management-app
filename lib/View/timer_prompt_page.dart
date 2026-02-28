@@ -5,9 +5,9 @@ import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
-import 'package:to_do_list/main.dart'; // To access db
+import 'package:to_do_list/main.dart';
 import 'package:to_do_list/util/timer_prompt_tile.dart';
-import 'package:to_do_list/providers.dart'; // For currentUserProvider
+import 'package:to_do_list/util/timerpromptdialog.dart';
 
 class TimerPromptPage extends ConsumerStatefulWidget {
   const TimerPromptPage({super.key});
@@ -22,7 +22,6 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
   TimeOfDay? _selectedTime;
   final List<DateTime> _scheduledDateTimes = [];
 
-  // Helper to generate consistent IDs for notifications based on prompt ID and index
   int _getNotificationId(String promptId, int index) {
     return (promptId.hashCode + index) & 0x7FFFFFFF;
   }
@@ -33,38 +32,26 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
     super.dispose();
   }
 
-
-  // Function to schedule notifications based on TimerPrompt
   Future<void> _scheduleNotificationsForPrompt(TimerPrompt prompt) async {
-    // 1. Cleanup existing notifications for this prompt ID
-    // Since we don't store them in the shared list, we cancel a range of potential IDs
     for (int i = 0; i < 50; i++) {
       final id = _getNotificationId(prompt.id, i);
       await localNotificationService.cancelNotification(id);
     }
 
-    // 2. Generate Dates to Schedule
     List<DateTime> datesToSchedule = [];
     DateTime now = DateTime.now();
     DateTime start = prompt.scheduledTime;
 
     if (!prompt.isRecurring) {
-      // If it's in the past, we might skip it or let it fire immediately depending on requirement.
-      // Here we schedule it as is.
       datesToSchedule.add(start);
     } else {
-      // Recurring logic: Schedule next 30 occurrences to ensure it works for a while
       int limit = 30;
       
       if (prompt.weekdays != null && prompt.weekdays!.isNotEmpty) {
-        // Weekly on specific days
         int currentCount = 0;
-        // Start checking from today at the scheduled time
         DateTime cursor = DateTime(now.year, now.month, now.day, start.hour, start.minute);
-        // If that time has passed today, start checking from tomorrow
         if (cursor.isBefore(now)) cursor = cursor.add(const Duration(days: 1));
 
-        // Look ahead day by day
         while (currentCount < limit) {
           if (prompt.weekdays!.contains(cursor.weekday)) {
             datesToSchedule.add(cursor);
@@ -73,7 +60,6 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
           cursor = cursor.add(const Duration(days: 1));
         }
       } else {
-        // Daily
         DateTime cursor = DateTime(now.year, now.month, now.day, start.hour, start.minute);
         if (cursor.isBefore(now)) cursor = cursor.add(const Duration(days: 1));
         
@@ -114,7 +100,7 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
                   return TimerPromptTile(
                     timerPrompt: prompt,
                     onDelete: _deletePrompt,
-                    onEdit: (p) => ref.read(timerPromptViewModelProvider.notifier).showTimerPromptDialog(
+                    onEdit: (p) => showTimerPromptDialog(
                       context: context,
                       existingPrompt: p,
                       onSave: (prompt) async {
@@ -131,7 +117,7 @@ class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => ref.read(timerPromptViewModelProvider.notifier).showTimerPromptDialog(
+        onPressed: () => showTimerPromptDialog(
           context: context,
           onSave: (prompt) async {
             try {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
+import 'package:to_do_list/theme.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
 
-class NotificationTile extends StatefulWidget {
+class NotificationTile extends ConsumerStatefulWidget {
   final ScheduledNotification notification;
   final Function(ScheduledNotification) onDelete;
   final Function(ScheduledNotification) onEdit; // New callback
@@ -20,10 +23,10 @@ class NotificationTile extends StatefulWidget {
   });
 
   @override
-  State<NotificationTile> createState() => _NotificationTileState();
+  ConsumerState<NotificationTile> createState() => _NotificationTileState();
 }
 
-class _NotificationTileState extends State<NotificationTile> {
+class _NotificationTileState extends ConsumerState<NotificationTile> {
   late TextEditingController _answerController;
 
   @override
@@ -40,6 +43,7 @@ class _NotificationTileState extends State<NotificationTile> {
 
   @override
   Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
     return Padding(
       padding: const EdgeInsets.only(left: 25.0, right: 25, top: 15),
       child: Slidable(
@@ -49,13 +53,13 @@ class _NotificationTileState extends State<NotificationTile> {
             SlidableAction(
               onPressed: (context) => widget.onEdit(widget.notification), // Call onEdit
               icon: Icons.edit,
-              backgroundColor: Colors.blue.shade400, // Edit color
+              backgroundColor: appTheme.secondary, // Edit color
               borderRadius: BorderRadius.circular(12),
             ),
             SlidableAction(
               onPressed: (context) => widget.onDelete(widget.notification),
               icon: Icons.delete,
-              backgroundColor: Colors.red.shade400,
+              backgroundColor: appTheme.tertiary,
               borderRadius: BorderRadius.circular(12),
             ),
           ],
@@ -63,19 +67,20 @@ class _NotificationTileState extends State<NotificationTile> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            gradient: LinearGradient(
+              colors: [appTheme.background, appTheme.primary, appTheme.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.notification.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+              Smalltextgradient(
+                text: widget.notification.title,
+                fontsize: 18,
+                overflow: TextOverflow.ellipsis,
               ),
               if (widget.notification.body != null && widget.notification.body!.isNotEmpty)
                 Padding(
@@ -83,7 +88,7 @@ class _NotificationTileState extends State<NotificationTile> {
                   child: Text(
                     widget.notification.body!,
                     style: TextStyle(
-                      color: Colors.grey[300],
+                      color: appTheme.background.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -93,7 +98,7 @@ class _NotificationTileState extends State<NotificationTile> {
                 child: Text(
                   'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.notification.scheduledDate.toLocal())}',
                   style: TextStyle(
-                    color: Colors.grey[400],
+                    color: appTheme.background.withOpacity(0.6),
                     fontSize: 12,
                   ),
                 ),
@@ -104,7 +109,7 @@ class _NotificationTileState extends State<NotificationTile> {
                 child: Text(
                   'Type: ${widget.notification.reminderType.toString().split('.').last}',
                   style: TextStyle(
-                    color: Colors.grey[400],
+                    color: appTheme.background.withOpacity(0.6),
                     fontStyle: FontStyle.italic,
                     fontSize: 12,
                   ),
@@ -135,15 +140,15 @@ class _NotificationTileState extends State<NotificationTile> {
                       Expanded(
                         child: TextField(
                           controller: _answerController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
+                          style: TextStyle(color: appTheme.background),
+                          decoration: InputDecoration(
                             hintText: 'Enter answer',
-                            hintStyle: TextStyle(color: Colors.grey),
+                            hintStyle: TextStyle(color: appTheme.background.withOpacity(0.5)),
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.send, color: Colors.white),
+                        icon: Icon(Icons.send, color: appTheme.background),
                         onPressed: () {
                           if (_answerController.text.isNotEmpty) {
                             widget.onFeedback(widget.notification, _answerController.text);
@@ -162,10 +167,10 @@ class _NotificationTileState extends State<NotificationTile> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => widget.onAiPrompt(widget.notification),
-                      icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                      label: const Text('Ask AI', style: TextStyle(color: Colors.white)),
+                      icon: Icon(Icons.auto_awesome, color: appTheme.background),
+                      label: Text('Ask AI', style: TextStyle(color: appTheme.background)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple.shade400,
+                        backgroundColor: appTheme.secondary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

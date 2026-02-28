@@ -35,6 +35,18 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
 
   @override
   AsyncValue<void> build() {
+    // Listen for connectivity changes to retry sync when coming online
+    final connectivity = ref.read(connectivityServiceProvider);
+    connectivity.status.listen((status) {
+      if (status == ConnectivityStatus.offline) {
+        // Reset sync flag when going offline so it will re-sync when back online
+        _hasSynced = false;
+        print('[DataSync] Connectivity changed to offline, resetting sync flag');
+      } else if (status == ConnectivityStatus.online && !_hasSynced) {
+        print('[DataSync] Connectivity changed to online, retrying sync');
+        runInitialSync();
+      }
+    });
     return const AsyncData(null);
   }
 
@@ -111,9 +123,18 @@ final userHasDataProvider = Provider<bool>((ref) {
 // Auth State Manager - handles subscriptions and sync lifecycle
 class AuthStateManager extends Notifier<bool> {
   bool _isAuthenticated = false;
+  bool _hasCheckedExistingSession = false;
 
   @override
   bool build() {
+    // Check for existing session on startup - this handles the case where
+    // the app is reopened with an existing session that was restored before
+    // Riverpod providers were initialized
+    if (!_hasCheckedExistingSession) {
+      _hasCheckedExistingSession = true;
+      _checkExistingSession();
+    }
+
     // Listen to auth state changes
     ref.listen(authStateProvider, (previous, next) {
       next.when(
@@ -134,6 +155,22 @@ class AuthStateManager extends Notifier<bool> {
       );
     });
     return false; // Initial state
+  }
+
+  /// Check for existing session on startup - handles app restart scenario
+  /// where session is restored before Riverpod providers are initialized
+  void _checkExistingSession() {
+    final auth = ref.read(authServiceProvider);
+    final currentUser = auth.currentUser;
+    
+    if (currentUser != null) {
+      print('[AuthStateManager] Found existing session on startup for user: ${currentUser.id}');
+      _isAuthenticated = true;
+      state = true;
+      _setupForAuthenticatedUser();
+    } else {
+      print('[AuthStateManager] No existing session on startup');
+    }
   }
 
   void _setupForAuthenticatedUser() {

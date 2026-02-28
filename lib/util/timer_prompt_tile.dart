@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
+import 'package:to_do_list/theme.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
 
-class TimerPromptTile extends StatelessWidget {
+class TimerPromptTile extends ConsumerWidget {
   final TimerPrompt timerPrompt;
   final Function(TimerPrompt) onDelete;
   final Function(TimerPrompt) onEdit;
@@ -16,7 +19,8 @@ class TimerPromptTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appTheme = ref.watch(themeProvider);
     return Padding(
       padding: const EdgeInsets.only(left: 25.0, right: 25, top: 15),
       child: Slidable(
@@ -26,13 +30,13 @@ class TimerPromptTile extends StatelessWidget {
             SlidableAction(
               onPressed: (context) => onEdit(timerPrompt),
               icon: Icons.edit,
-              backgroundColor: Colors.blue.shade400,
+              backgroundColor: appTheme.secondary,
               borderRadius: BorderRadius.circular(12),
             ),
             SlidableAction(
               onPressed: (context) => onDelete(timerPrompt),
               icon: Icons.delete,
-              backgroundColor: Colors.red.shade400,
+              backgroundColor: appTheme.tertiary,
               borderRadius: BorderRadius.circular(12),
             ),
           ],
@@ -40,26 +44,27 @@ class TimerPromptTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            gradient: LinearGradient(
+              colors: [appTheme.background, appTheme.primary, appTheme.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                timerPrompt.prompt,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+              Smalltextgradient(
+                text: timerPrompt.prompt,
+                fontsize: 18,
+                overflow: TextOverflow.ellipsis,
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   _getRecurrenceText(timerPrompt),
                   style: TextStyle(
-                    color: Colors.grey[400],
+                    color: appTheme.background.withOpacity(0.6),
                     fontSize: 12,
                   ),
                 ),
@@ -70,7 +75,7 @@ class TimerPromptTile extends StatelessWidget {
                   child: Text(
                     'Response: ${timerPrompt.response}',
                     style: TextStyle(
-                      color: Colors.grey[300],
+                      color: appTheme.background.withOpacity(0.7),
                       fontStyle: FontStyle.italic,
                       fontSize: 14,
                     ),

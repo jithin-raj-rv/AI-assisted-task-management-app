@@ -229,17 +229,18 @@ serve(async (req) => {
     })
 
     // Fetch user data
-    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes] = await Promise.all([
+    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes, remindersRes] = await Promise.all([
       supabaseClient.from('todos').select('*').eq('user_id', userId),
       supabaseClient.from('goals').select('*').eq('user_id', userId),
       supabaseClient.from('goal_steps').select('*').eq('user_id', userId),
       supabaseClient.from('timer_prompts').select('*').eq('user_id', userId),
       supabaseClient.from('user_feedback').select('*').eq('user_id', userId),
       supabaseClient.from('personality_traits').select('*').eq('user_id', userId),
-      supabaseClient.from('additional_info').select('*').eq('user_id', userId)
+      supabaseClient.from('additional_info').select('*').eq('user_id', userId),
+      supabaseClient.from('reminders').select('*').eq('user_id', userId)
     ])
 
-    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error) {
+    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error || remindersRes.error) {
       throw new Error('Failed to fetch user data')
     }
 
@@ -260,11 +261,17 @@ serve(async (req) => {
     const feedback = feedbackRes.data || []
     const personalityTraits = personalityRes.data || []
     const additionalInfo = additionalInfoRes.data || []
+    const reminders = (remindersRes.data || []).map((item: any) => ({
+      ...item,
+      scheduled_date: formatTimestampForAI(item.scheduled_date)
+    }))
 
     // Create system prompt for systemInstruction
-    const systemPrompt =`You have access to User todolist: ${JSON.stringify(todolist)}
+    const systemPrompt =`
+You have access to User todolist: ${JSON.stringify(todolist)}
 User goals: ${JSON.stringify(goals)}
 User goal steps: ${JSON.stringify(goalSteps)}
+User reminders: ${JSON.stringify(reminders)}
 User timer prompts: ${JSON.stringify(timerPrompts)}
 User feedback: ${JSON.stringify(feedback)}
 User personality traits: ${JSON.stringify(personalityTraits)}
@@ -285,7 +292,38 @@ Collect user info and store in personality, additional info as necessary.
 when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
 When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.
 You are very good at storing and retrieving user info in additional info. if goal is not clear, you add additional info to ask the user for more info. and delete it once everything is clear 
-You are very good at storing information to understand the user.`
+You are very good at storing information to understand the user.
+
+
+You are a highly proactive, empathetic, and organized Professional Personal Manager. Your goal is to architect the user's life by translating high-level goals into actionable daily success.
+
+### CRITICAL: UNDERSTANDING IMPORTANCE vs URGENCY:
+- **IMPORTANCE**: How valuable/meaningful the task is. A task that matters for achieving goals. Use "IMPORTANT" if the task contributes significantly to user's goals, health, finances, or personal growth.
+- **URGENCY**: How time-sensitive the task is. A task that requires immediate attention. Use "URGENT" if the task has a deadline, is time-bound, or needs to be done NOW.
+
+IMPORTANT ≠ URGENT! A task can be:
+- Important but NOT Urgent: Exercise, long-term planning, preventive healthcare
+- Urgent but NOT Important: Someone else's emergency, interruptions
+- Both Important AND Urgent: Deadline today, medical emergency
+- Neither: Trivial tasks, time-wasters
+
+When adding todos, ALWAYS consider both dimensions separately!
+
+### CORE OPERATING PRINCIPLES:
+1. **Strategic Translation**: Automatically break down 'Goals' into 'Goal Steps', then translate those into daily 'Todos'.
+2. **Reminders from Todos**: You are responsible for analyzing the daily 'Todos' and calling 'addReminder' for each. Determine the best time based on 'Personality Traits' and 'Additional Info'.
+3. **The Feedback Loop**: Use 'Feedback' from past reminders to adjust 'Timer Prompts'. If a user skips a task, use 'ModifyReminder' to reschedule and 'AddAdditionalInfo' to note the reason.
+4. **Data Hygiene**: Delete 'Feedback' once analyzed and delete temporary 'Additional Info' notes once a goal is clarified.
+
+### TOOL LOGIC:
+- **Todos & Reminders**: Use 'addTodo' for the task and 'addReminder' to ensure the user is nudged.
+- **Timer Prompts**: Schedule AI-driven prompts to check on goal progress and update 'Todos' based on the response.
+- **Visual Aesthetic**: Call 'updateAppColors' when the user mentions mood or color.
+
+### BEHAVIORAL NOTE:
+When the user asks about their day, say: "I've analyzed your goal [Goal Name]. Based on your preference for [Personality Trait], I've scheduled [Todo] and set a reminder for [Time]."
+
+`
     // Build conversation history (only user/model messages, no system messages)
     let conversationHistory = chatHistory
       ?.filter(msg => msg.role && (msg.role === 'user' || msg.role === 'model') && msg.content)
@@ -338,13 +376,13 @@ You are very good at storing information to understand the user.`
     const todoTool = {
       functionDeclarations: [{
         name: 'addTodo',
-        description: 'Adds a new to-do item.',
+        description: 'Adds a new to-do item. IMPORTANT and URGENCY are different! importance=how valuable, urgency=how time-sensitive.',
         parameters: {
           type: 'object',
           properties: {
             task: { type: 'string', description: 'The task to be done.' },
-            importance: { type: 'string', description: 'The importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
-            urgency: { type: 'string', description: 'The urgency level.',enum: ['URGENT', 'NOT URGENT']},
+            importance: { type: 'string', description: 'How valuable/meaningful this task is: IMPORTANT (high value/goals) or NOT IMPORTANT',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'How time-sensitive: URGENT (deadline/now) or NOT URGENT',enum: ['URGENT', 'NOT URGENT']},
             description: { type: 'string', description: 'Task description.' },
             dueDate: { type: 'string', description: 'Due date in ISO format.' },
             isCompleted: { type: 'boolean', description: 'Whether the task is completed.' }
@@ -363,14 +401,14 @@ You are very good at storing information to understand the user.`
         }
       }, {
         name: 'modifyTodo',
-        description: 'Modifies a to-do item.',
+        description: 'Modifies a to-do item. IMPORTANT and URGENCY are different!',
         parameters: {
           type: 'object',
           properties: {
             taskId: { type: 'string', description: 'The ID of the task to modify.' },
             newTask: { type: 'string', description: 'The updated task.' },
-            newImportance: { type: 'string', description: 'The updated importance level.',enum: ['IMPORTANT','NOT IMPORTANT'] },
-            newUrgency: { type: 'string',description: 'The updated urgency level.',enum: ['URGENT', 'NOT URGENT']},
+            newImportance: { type: 'string', description: 'How valuable: IMPORTANT or NOT IMPORTANT',enum: ['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string',description: 'How time-sensitive: URGENT or NOT URGENT',enum: ['URGENT', 'NOT URGENT']},
             newDescription: { type: 'string' },
             newDueDate: { type: 'string' },
             newIsCompleted: { type: 'boolean' }
@@ -383,7 +421,7 @@ You are very good at storing information to understand the user.`
     const goalTool = {
       functionDeclarations: [{
         name: 'addGoal',
-        description: 'Adds a new goal.',
+        description: 'Adds a new goal. IMPORTANT and URGENCY are different! importance=how valuable, urgency=how time-sensitive.',
         parameters: {
           type: 'object',
           properties: {
@@ -391,8 +429,8 @@ You are very good at storing information to understand the user.`
             description: { type: 'string', description: 'Goal description.' },
             targetDate: { type: 'string', description: 'Target date in ISO format.' },
             isCompleted: { type: 'boolean', description: 'Whether the goal is completed.' },
-            importance: { type: 'string', description: 'The importance level of goal',enum:['IMPORTANT','NOT IMPORTANT'] },
-            urgency: { type: 'string', description: 'The urgency level of goal',enum:['URGENT', 'NOT URGENT'] }
+            importance: { type: 'string', description: 'How valuable: IMPORTANT (high value) or NOT IMPORTANT',enum:['IMPORTANT','NOT IMPORTANT'] },
+            urgency: { type: 'string', description: 'How time-sensitive: URGENT (deadline soon) or NOT URGENT',enum:['URGENT', 'NOT URGENT'] }
           },
           required: ['title']
         }
@@ -408,7 +446,7 @@ You are very good at storing information to understand the user.`
         }
       }, {
         name: 'modifyGoal',
-        description: 'Modifies a goal.',
+        description: 'Modifies a goal. IMPORTANT and URGENCY are different!',
         parameters: {
           type: 'object',
           properties: {
@@ -417,8 +455,8 @@ You are very good at storing information to understand the user.`
             newDescription: { type: 'string' },
             newTargetDate: { type: 'string' },
             newIsCompleted: { type: 'boolean' },
-            newImportance: { type: 'string', description: 'The updated importance level.',enum:['IMPORTANT','NOT IMPORTANT'] },
-            newUrgency: { type: 'string', description: 'The updated urgency level.',enum:['URGENT','NOT URGENT'] }
+            newImportance: { type: 'string', description: 'How valuable: IMPORTANT or NOT IMPORTANT',enum:['IMPORTANT','NOT IMPORTANT'] },
+            newUrgency: { type: 'string', description: 'How time-sensitive: URGENT or NOT URGENT',enum:['URGENT','NOT URGENT'] }
           },
           required: ['goalId', 'newTitle']
         }

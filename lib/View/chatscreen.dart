@@ -7,6 +7,7 @@ import 'package:to_do_list/models/chat_model.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/View/chathistoryscreen.dart'; // Import the new chat history screen
 import 'package:to_do_list/providers.dart';
+import 'package:to_do_list/util/chatbubble.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? initialPrompt;
@@ -21,6 +22,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ChatData _chatData = ChatData(); // Instantiate ChatData
   bool _isLoading = false;
   bool _initialPromptProcessed = false; // Flag to prevent duplicate processing
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -35,6 +37,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _sendMessage(customText: widget.initialPrompt);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _sendMessage({String? customText}) async {
@@ -64,6 +85,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _chatData.addMessage(Chat(text: messageText, isUser: true));
         _isLoading = true;
       });
+      
+      _scrollToBottom();
 
       try {
         // Get current user ID from Riverpod
@@ -82,6 +105,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _chatData.addMessage(Chat(text: response, isUser: false));
           _isLoading = false;
         });
+        
+        _scrollToBottom();
       } catch (e) {
         String errorMessage = e.toString();
 
@@ -94,6 +119,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _chatData.addMessage(Chat(text: errorMessage, isUser: false));
           _isLoading = false;
         });
+        
+        _scrollToBottom();
 
         // Show toast notification for critical errors
         if (errorMessage.contains('sign in') || errorMessage.contains('session')) {
@@ -159,60 +186,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: _chatData.currentChatMessages.length,
-              itemBuilder: (context, index) {
-                final message = _chatData.currentChatMessages[index];
-                return ListTile(
-                  title: Align(
-                    alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: message.isUser
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.secondary.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(message.text, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-                    ),
-                  ),
-                );
-              },
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              appTheme.background,
+              appTheme.primary.withOpacity(0.1),
+              appTheme.secondary.withOpacity(0.05),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _chatData.currentChatMessages.length,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                itemBuilder: (context, index) {
+                  final message = _chatData.currentChatMessages[index];
+                  return ChatMessageBubble(
+                    text: message.text,
+                    isUser: message.isUser,
+                    useGradient: true,
+                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  );
+                },
+              ),
             ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    onSubmitted: (value) => _sendMessage(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+            if (_isLoading)
+              ChatLoadingIndicator(),
+            ChatInputField(
+              controller: _controller,
+              hintText: 'Type a message...',
+              onSubmit: () => _sendMessage(),
+              onSend: () => _sendMessage(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
