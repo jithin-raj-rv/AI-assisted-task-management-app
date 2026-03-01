@@ -172,7 +172,7 @@ class ReminderPageViewModel {
   Future<void> deleteReminder(ScheduledNotification reminder) async {
     await ref.read(scheduledNotificationsViewModelProvider.notifier).deleteNotification(reminder.id);
     try {
-      await localNotificationService.cancelNotificationByStringId(reminder.id);
+      await localNotificationService.cancelNotification(reminder.id);
     } catch (e) {
       print('[ReminderVM] Failed to cancel local notification: $e');
     }

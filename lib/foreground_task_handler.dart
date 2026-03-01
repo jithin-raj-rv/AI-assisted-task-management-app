@@ -1,7 +1,7 @@
 import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:to_do_list/Notification/local_notification_service.dart';
+import 'package:to_do_list/Notification/awesome_notification_service.dart';
 import 'package:to_do_list/cache/scheduled_notification_cache.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 import 'package:to_do_list/services/foreground_service_manager.dart';
@@ -12,7 +12,7 @@ void foregroundTaskCallback() {
 }
 
 class ForegroundTaskHandler extends TaskHandler {
-  LocalNotificationService? _localNotificationService;
+  AwesomeNotificationService? _localNotificationService;
   ReminderSyncService? _reminderSyncService;
   ScheduledNotificationCache? _cache;
   ForegroundServiceManager? _foregroundServiceManager;
@@ -30,7 +30,7 @@ class ForegroundTaskHandler extends TaskHandler {
       await Hive.openBox('settings');
       
       // Initialize services
-      _localNotificationService = LocalNotificationService();
+      _localNotificationService = AwesomeNotificationService();
       await _localNotificationService!.init();
       
       _reminderSyncService = ReminderSyncService(ConnectivityService());

@@ -11,7 +11,7 @@ import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/timer_prompt_model.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
-import 'package:to_do_list/main.dart' show localNotificationService;
+import 'package:to_do_list/Notification/notification_service.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -21,6 +21,26 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  final NotificationService _notificationService = NotificationService();
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initNotificationService();
+  }
+
+  Future<void> _initNotificationService() async {
+    try {
+      await _notificationService.init();
+      setState(() {
+        _isInitialized = true;
+      });
+    } catch (e) {
+      print('Failed to initialize notification service: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = ref.watch(themeProvider.notifier);
@@ -92,7 +112,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onTap: () async {
               try {
                 final granted =
-                    await localNotificationService.requestPermission();
+                    await _notificationService.requestNotificationPermission();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

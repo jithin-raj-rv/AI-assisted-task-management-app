@@ -268,7 +268,7 @@ class _RemainderDialogBoxState extends ConsumerState<RemainderDialogBox> {
                     child: DropdownButton<ReminderType>(
                       value: _selectedReminderType,
                       dropdownColor: appTheme.background,
-                      style: TextStyle(color: appTheme.background, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: appTheme.primary, fontWeight: FontWeight.bold),
                       underline: const SizedBox(),
                       onChanged: (ReminderType? newValue) {
                         if (newValue != null) {
@@ -279,9 +279,11 @@ class _RemainderDialogBoxState extends ConsumerState<RemainderDialogBox> {
                       },
                       items: ReminderType.values.map<DropdownMenuItem<ReminderType>>(
                         (ReminderType type) {
+                          String typeName = type.toString().split('.').last;
+                          typeName = typeName[0].toUpperCase() + typeName.substring(1);
                           return DropdownMenuItem<ReminderType>(
                             value: type,
-                            child: Text(type.toString().split('.').last),
+                            child: Text(typeName),
                           );
                         },
                       ).toList(),
@@ -293,12 +295,17 @@ class _RemainderDialogBoxState extends ConsumerState<RemainderDialogBox> {
 
               // Conditional UI for Option Reminders
               if (_selectedReminderType == ReminderType.option) ...[
-                Gradienttextfield(controller: _newOptionController, text: 'Add an option'),
-                if (_newOptionController.text.isNotEmpty)
-                  IconButton(
-                    icon: Icon(Icons.add_circle, color: appTheme.primary),
-                    onPressed: _addOption,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Gradienttextfield(controller: _newOptionController, text: 'Add an option'),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.add_circle, color: appTheme.primary),
+                      onPressed: _addOption,
+                    ),
+                  ],
+                ),
                 if (_options.isNotEmpty)
                   Column(
                     children: _options.asMap().entries.map((entry) {

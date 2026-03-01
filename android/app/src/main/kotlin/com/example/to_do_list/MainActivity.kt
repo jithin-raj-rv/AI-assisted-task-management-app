@@ -10,6 +10,7 @@ import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import me.carda.awesome_notifications.AwesomeNotificationsPlugin
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "to_do_list/battery"

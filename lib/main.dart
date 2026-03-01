@@ -3,13 +3,16 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:to_do_list/Notification/local_notification_service.dart';
+import 'package:to_do_list/Notification/notification_service.dart';
 import 'package:to_do_list/foreground_task_handler.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
 import 'package:to_do_list/View/homepage.dart';
 import 'package:to_do_list/View/login_page.dart';
 import 'package:to_do_list/View/user_info_collection_page.dart';
 import 'package:to_do_list/View/onboarding_dialog.dart';
 import 'package:to_do_list/View/chatscreen.dart';
+import 'package:to_do_list/test_notification.dart';
 import 'package:to_do_list/models/goal_step_model.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
@@ -28,7 +31,7 @@ import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/services/foreground_service_manager.dart';
 
-final localNotificationService = LocalNotificationService();
+final localNotificationService = NotificationService();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -161,12 +164,15 @@ void main() async {
   // Migrate data from old box to typed boxes
   await migrateData();
 
+  // Initialize timezone library
+  tz.initializeTimeZones();
+  
   // Initialize notification service
-  // Pass the handler to the init method (ensure your LocalNotificationService supports this)
+  // Pass the handler to the init method (ensure your AwesomeNotificationService supports this)
   await localNotificationService.init(onNotificationResponse: onNotificationResponse);
 
   // Request notification permission (required for Android 13+)
-  final bool? granted = await localNotificationService.requestPermission();
+  final bool? granted = await localNotificationService.requestNotificationPermission();
   if (granted != true) {
     print('Notification permission denied');
   } else {
@@ -175,6 +181,13 @@ void main() async {
     // Check if exact alarms can be scheduled
     final canScheduleExact = await localNotificationService.canScheduleExactNotifications();
     print('Can schedule exact notifications: $canScheduleExact');
+    
+    // Request exact alarm permission if needed (Android 13+)
+    if (!canScheduleExact) {
+      print('Exact alarm permission needed - please enable in Settings for precise notifications');
+      // Note: Exact alarm permission is typically requested through system settings
+      // or handled automatically by the notification library
+    }
     
     
   }

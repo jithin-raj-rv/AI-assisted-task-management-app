@@ -17,59 +17,6 @@ class TimerPromptPage extends ConsumerStatefulWidget {
 }
 
 class _TimerPromptPageState extends ConsumerState<TimerPromptPage> {
-  final TextEditingController _promptController = TextEditingController();
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  final List<DateTime> _scheduledDateTimes = [];
-
-  int _getNotificationId(String promptId, int index) {
-    return (promptId.hashCode + index) & 0x7FFFFFFF;
-  }
-
-  @override
-  void dispose() {
-    _promptController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _scheduleNotificationsForPrompt(TimerPrompt prompt) async {
-    for (int i = 0; i < 50; i++) {
-      final id = _getNotificationId(prompt.id, i);
-      await localNotificationService.cancelNotification(id);
-    }
-
-    List<DateTime> datesToSchedule = [];
-    DateTime now = DateTime.now();
-    DateTime start = prompt.scheduledTime;
-
-    if (!prompt.isRecurring) {
-      datesToSchedule.add(start);
-    } else {
-      int limit = 30;
-      
-      if (prompt.weekdays != null && prompt.weekdays!.isNotEmpty) {
-        int currentCount = 0;
-        DateTime cursor = DateTime(now.year, now.month, now.day, start.hour, start.minute);
-        if (cursor.isBefore(now)) cursor = cursor.add(const Duration(days: 1));
-
-        while (currentCount < limit) {
-          if (prompt.weekdays!.contains(cursor.weekday)) {
-            datesToSchedule.add(cursor);
-            currentCount++;
-          }
-          cursor = cursor.add(const Duration(days: 1));
-        }
-      } else {
-        DateTime cursor = DateTime(now.year, now.month, now.day, start.hour, start.minute);
-        if (cursor.isBefore(now)) cursor = cursor.add(const Duration(days: 1));
-        
-        for (int i = 0; i < limit; i++) {
-          datesToSchedule.add(cursor.add(Duration(days: i)));
-        }
-      }
-    }
-  }
-
   void _deletePrompt(TimerPrompt prompt) async {
     await ref.read(timerPromptViewModelProvider.notifier).deletePrompt(prompt.id);
   }
