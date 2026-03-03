@@ -25,8 +25,8 @@ class GoalAdapter extends TypeAdapter<Goal> {
       userId: fields[5] as String?,
       createdAt: fields[6] as DateTime?,
       updatedAt: fields[7] as DateTime?,
-      importance: fields[8] as String? ?? 'NOT IMPORTANT',
-      urgency: fields[9] as String? ?? 'NOT URGENT',
+      importance: fields[8] as String,
+      urgency: fields[9] as String,
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_list/View/system_prompt_editor_page.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:to_do_list/providers.dart';
@@ -151,6 +152,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 context,
                 MaterialPageRoute(
                     builder: (context) => const AdditionalInfoPage()),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('System Prompts'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const SystemPromptEditorPage()),
               );
             },
           ),

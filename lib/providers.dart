@@ -6,6 +6,7 @@ import 'package:to_do_list/viewmodels/reminder_page_viewmodel.dart';
 import 'package:to_do_list/viewmodels/settings_viewmodel.dart';
 import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
+import 'package:to_do_list/viewmodels/system_prompt_viewmodel.dart';
 import 'package:to_do_list/services/auth_service.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 
@@ -68,13 +69,15 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
       await ref.read(personalitySyncServiceProvider).syncFromSupabase();
       await ref.read(additionalInfoSyncServiceProvider).syncFromSupabase();
       await ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
+      await ref.read(systemPromptSyncServiceProvider).syncFromSupabase();
 
       _hasSynced = true;
       state = const AsyncData(null);
       print('[DataSync] Initial sync completed');
     } catch (e, st) {
+      print('[DataSync] Sync failed: $e');
       state = AsyncError(e, st);
-      rethrow;
+      // Don't rethrow - let the app continue with cached data
     }
   }
 
@@ -185,6 +188,7 @@ class AuthStateManager extends Notifier<bool> {
     ref.read(additionalInfoSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(timerPromptSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
+    ref.read(systemPromptSyncServiceProvider).setupRealtimeSubscriptions();
 
     print('[AuthStateManager] Realtime subscriptions set up');
   }

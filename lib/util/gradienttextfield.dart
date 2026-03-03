@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
 
 class Gradienttextfield extends ConsumerWidget {
-  const Gradienttextfield({super.key,required this.controller,required this.text,this.obscureText=false});
+  const Gradienttextfield({super.key,required this.controller,required this.text,this.obscureText=false, this.maxLines = 1});
   final TextEditingController controller;
   final String text;
   final bool obscureText;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context ,WidgetRef ref ) {
@@ -27,6 +28,7 @@ return Container(
           child: TextField(
             controller: controller,
             obscureText: obscureText,
+            maxLines: maxLines,
             decoration: InputDecoration(
               labelText: text,
               border: InputBorder.none,

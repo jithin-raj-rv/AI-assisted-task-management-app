@@ -20,6 +20,7 @@ import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
 import 'package:to_do_list/models/personality_trait_model.dart';
 import 'package:to_do_list/models/additional_info_model.dart';
+import 'package:to_do_list/models/system_prompt_model.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
@@ -265,6 +266,7 @@ void main() async {
   Hive.registerAdapter(QuestionTypeAdapter());
   Hive.registerAdapter(PersonalityTraitAdapter());
   Hive.registerAdapter(AdditionalInfoAdapter());
+  Hive.registerAdapter(SystemPromptModelAdapter());
 
 
 
@@ -276,6 +278,7 @@ void main() async {
   await Hive.openBox<UserFeedback>('user_feedback');
   await Hive.openBox<PersonalityTrait>('personality_traits');
   await Hive.openBox<AdditionalInfo>('additional_info_items');
+  await Hive.openBox<SystemPromptModel>('system_prompts');
   await Hive.openBox('settings');
 
   // Keep old box for migration
