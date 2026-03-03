@@ -188,22 +188,32 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
                     text: 'Repeat:',
                     fontsize: 15,
                   ),
-                  DropdownButton<String>(
-                    value: _repeatOption,
-                    dropdownColor: appTheme.primary,
-                    style: TextStyle(color: appTheme.background),
-                    items: ['Never', 'Daily', 'Weekly']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _repeatOption = val!;
-                        _isRecurring = val != 'Never';
-                        if (!_isRecurring) {
-                          _selectedWeekdays.clear();
-                        }
-                      });
-                    },
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [appTheme.primary, appTheme.secondary],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: _repeatOption,
+                      dropdownColor: appTheme.primary,
+                      style: TextStyle(color: appTheme.background),
+                      underline: const SizedBox(),
+                      items: ['Never', 'Daily', 'Weekly']
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _repeatOption = val!;
+                          _isRecurring = val != 'Never';
+                          if (!_isRecurring) {
+                            _selectedWeekdays.clear();
+                          }
+                        });
+                      },
+                    ),
                   ),
                 ],
               ),

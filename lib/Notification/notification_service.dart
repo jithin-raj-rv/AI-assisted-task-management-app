@@ -37,7 +37,14 @@ class NotificationService {
     if (onNotificationResponse != null) {
       AwesomeNotifications().setListeners(
         onActionReceivedMethod: (receivedAction) async {
-          onNotificationResponse(receivedAction.payload?['payload']);
+          final originalPayload = receivedAction.payload?['payload'];
+          var payloadToSend = originalPayload;
+          // If the user pressed an action button, append the action key so
+          // callers can distinguish which option was chosen.
+          if (receivedAction.buttonKeyPressed != null) {
+            payloadToSend = '${originalPayload ?? ''}||action:${receivedAction.buttonKeyPressed}';
+          }
+          onNotificationResponse(payloadToSend);
         },
       );
     }
@@ -89,6 +96,17 @@ class NotificationService {
     print('[Notification] Scheduling: id=${notification.id}, time=$scheduledTime');
 
     try {
+      // Build action buttons from provided options (if any)
+      final actionButtons = <NotificationActionButton>[];
+      if (notification.options != null && notification.options!.isNotEmpty) {
+        for (var i = 0; i < notification.options!.length; i++) {
+          final opt = notification.options![i];
+          // Use the option text as both key and label so the pressed key
+          // maps directly to the option string.
+          actionButtons.add(NotificationActionButton(key: opt, label: opt, actionType: ActionType.Default));
+        }
+      }
+
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: notification.id.hashCode.abs(),
@@ -99,6 +117,7 @@ class NotificationService {
           category: NotificationCategory.Reminder,
           wakeUpScreen: true,
         ),
+        actionButtons: actionButtons.isNotEmpty ? actionButtons : null,
         schedule: NotificationCalendar.fromDate(date: scheduledTime, preciseAlarm: true),
       );
       print('✅ [Notification] Scheduled successfully: ${notification.id}');

@@ -177,6 +177,16 @@ class ReminderSyncService {
             final record = payload.newRecord!;
             print('[ReminderSync] Processing ${payload.eventType} for reminder id: ${record['id']}');
             print('[ReminderSync] Record fields: id=${record['id']}, title=${record['title']}, body=${record['body']}, scheduled_date=${record['scheduled_date']}, payload=${record['payload']}, reminder_type=${record['reminder_type']}, options=${record['options']}, expected_answer=${record['expected_answer']}, ai_prompt=${record['ai_prompt']}, user_id=${record['user_id']}');
+            
+            // Parse options - handle both List<dynamic> and List<String> from Supabase
+            List<String>? options;
+            final rawOptions = record['options'];
+            if (rawOptions != null) {
+              if (rawOptions is List) {
+                options = rawOptions.map((e) => e.toString()).toList();
+              }
+            }
+            
             final reminder = ScheduledNotification(
               id: record['id']?.toString() ?? '',  // Explicitly convert to String
               title: record['title'] ?? '',
@@ -184,7 +194,7 @@ class ReminderSyncService {
               scheduledDate: record['scheduled_date'] != null ? DateTime.parse(record['scheduled_date']) : DateTime.now(),
               payload: record['payload'],
               reminderType: _parseReminderType(record['reminder_type']),
-              options: record['options'] as List<String>?,
+              options: options,
               expectedAnswer: record['expected_answer'],
               aiPrompt: record['ai_prompt'],
               userId: record['user_id'],

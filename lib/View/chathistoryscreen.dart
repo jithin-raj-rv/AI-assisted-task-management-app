@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/database/chatdata.dart';
 import 'package:to_do_list/theme.dart';
+import 'package:to_do_list/util/icongradient.dart';
+import 'package:to_do_list/util/smalltextgradient.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 
 
@@ -62,15 +64,13 @@ class _ChatHistoryScreenState extends ConsumerState<ChatHistoryScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   color: appTheme.background,
                   child: ListTile(
-                    title: Text(
-                      session['title']!,
-                      style: TextStyle(
-                        color: isCurrent ? appTheme.actionGradientStart : appTheme.secondary,
-                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                      ),
+                    title: Smalltextgradient(
+                      text:session['title']!,
+                      fontsize: 18,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     trailing: IconButton(
-                      icon: Icon(Icons.delete, color: appTheme.secondary),
+                      icon: Icongradient(icon:Icons.delete,),
                       onPressed: () => _deleteChatSession(session['id']!),
                     ),
                     onTap: () {

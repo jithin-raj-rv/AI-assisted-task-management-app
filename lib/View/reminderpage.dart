@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // Supabase access removed from UI; use providers for auth where needed
 import 'package:to_do_list/theme.dart';
+import 'package:to_do_list/util/icongradient.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
@@ -83,7 +84,7 @@ class _ReminderPageState extends ConsumerState<ReminderPage> {
         title: Tittlegradient(text: "My Reminders"),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: appTheme.primary),
+            icon: Icongradient(icon:Icons.refresh,),
             onPressed: _refreshReminders,
             tooltip: 'Refresh reminders',
           ),

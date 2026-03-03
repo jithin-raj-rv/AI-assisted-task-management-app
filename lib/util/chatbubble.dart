@@ -92,8 +92,8 @@ class ChatMessageBubble extends ConsumerWidget {
       useGradient: useGradient,
       child: Text(
         text,
-        style: textStyle ?? const TextStyle(
-          color: Colors.white,
+        style: textStyle ?? TextStyle(
+          color: appTheme.foreground.withOpacity(0.65),
           fontSize: 16,
         ),
       ),
@@ -177,29 +177,35 @@ class ChatInputField extends ConsumerWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: appTheme.background.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: appTheme.primary.withOpacity(0.3),
                   width: 1,
                 ),
               ),
-              child: TextField(
-                controller: controller,
-                autofocus: autofocus,
-                style: TextStyle(color: appTheme.background),
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  hintStyle: TextStyle(
-                    color: appTheme.background.withOpacity(0.5),
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [appTheme.primary, appTheme.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: TextField(
+                  controller: controller,
+                  autofocus: autofocus,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  onSubmitted: (_) => onSubmit?.call(),
                 ),
-                onSubmitted: (_) => onSubmit?.call(),
               ),
             ),
           ),

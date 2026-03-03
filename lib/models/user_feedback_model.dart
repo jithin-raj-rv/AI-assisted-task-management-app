@@ -42,4 +42,22 @@ class UserFeedback extends HiveObject {
       userId,
     ];
   }
+
+  factory UserFeedback.fromJson(Map<String, dynamic> json) {
+    return UserFeedback(
+      id: json['id'],
+      userId: json['user_id'],
+      feedback: json['feedback'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'feedback': feedback,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
 }

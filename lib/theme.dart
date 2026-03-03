@@ -9,6 +9,7 @@ class AppThemeState {
   final Color tertiary;
   final Color quatenery;
   final Color background;
+  final Color foreground;
   final Color actionGradientStart;
   final Color actionGradientEnd;
   final Color textGradientStart;
@@ -25,6 +26,7 @@ class AppThemeState {
     required this.tertiary,
     required this.quatenery,
     required this.background,
+    required this.foreground,
     required this.actionGradientStart,
     required this.actionGradientEnd,
     required this.textGradientStart,
@@ -42,12 +44,13 @@ class AppThemeState {
       primary: Colors.blue,
       secondary: Colors.purpleAccent,
       tertiary: Colors.orange,
-      quatenery: Colors.purpleAccent,
+      quatenery: Colors.cyanAccent,
       background: Colors.white,
+      foreground: Colors.black,
       actionGradientStart: Colors.purple,
       actionGradientEnd: Colors.lightBlueAccent,
-      textGradientStart: Colors.lightBlue,
-      textGradientEnd: Colors.purpleAccent,
+      textGradientStart: Colors.purple,
+      textGradientEnd: Color.fromARGB(255, 0, 122, 134),
       accentGradientStart: Colors.blueGrey,
       accentGradientEnd: Colors.purple,
       backgroundGradientStart: Colors.cyanAccent,
@@ -64,6 +67,7 @@ class AppThemeState {
       tertiary: Colors.indigo,
       quatenery: Colors.pink,
       background: Colors.black,
+      foreground:Colors.white,
       actionGradientStart: Colors.teal,
       actionGradientEnd: Colors.purpleAccent,
       textGradientStart: Colors.purpleAccent,

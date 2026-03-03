@@ -64,7 +64,7 @@ class TimerPromptTile extends ConsumerWidget {
                 child: Text(
                   _getRecurrenceText(timerPrompt),
                   style: TextStyle(
-                    color: appTheme.background.withOpacity(0.6),
+                    color: appTheme.foreground.withOpacity(0.7),
                     fontSize: 12,
                   ),
                 ),
@@ -75,7 +75,7 @@ class TimerPromptTile extends ConsumerWidget {
                   child: Text(
                     'Response: ${timerPrompt.response}',
                     style: TextStyle(
-                      color: appTheme.background.withOpacity(0.7),
+                      color: appTheme.foreground.withOpacity(0.5),
                       fontStyle: FontStyle.italic,
                       fontSize: 14,
                     ),

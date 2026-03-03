@@ -287,12 +287,38 @@ class AwesomeNotificationService {
       else if (now.difference(notification.scheduledDate).inMinutes < 5) {
         print('Showing recent past notification immediately: ${notification.id} scheduled for ${notification.scheduledDate}');
         try {
-          await showNotification(
-            id: _convertIdTo32Bit(notification.id),
-            title: notification.title,
-            body: notification.body!,
-            payload: notification.payload,
-          );
+          if (notification.reminderType == ReminderType.option &&
+              notification.options != null &&
+              notification.options!.isNotEmpty) {
+            List<NotificationActionButton> actionButtons = notification.options!
+                .map((option) => NotificationActionButton(
+                      key: option,
+                      label: option,
+                      autoDismissible: true,
+                      enabled: true,
+                    ))
+                .toList();
+            actionButtons.add(NotificationActionButton(
+              key: 'DISMISS',
+              label: 'Dismiss',
+              autoDismissible: true,
+              enabled: true,
+            ));
+            await showNotificationWithActions(
+              id: _convertIdTo32Bit(notification.id),
+              title: notification.title,
+              body: notification.body!,
+              payload: notification.payload,
+              actions: actionButtons,
+            );
+          } else {
+            await showNotification(
+              id: _convertIdTo32Bit(notification.id),
+              title: notification.title,
+              body: notification.body!,
+              payload: notification.payload,
+            );
+          }
         } catch (e) {
           print('Failed to show recent past notification ${notification.id}: $e');
         }

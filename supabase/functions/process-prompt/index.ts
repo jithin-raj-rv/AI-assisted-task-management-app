@@ -796,10 +796,9 @@ When the user asks about their day, say: "I've analyzed your goal [Goal Name]. B
             id: Date.now().toString(),
             user_id: userId,
             goal_id: args.goalId,
-            title: args.title || 'Untitled Step',
-            description: args.description || '',
-            order_index: args.orderIndex || 0,
-            is_completed: false
+            step_text: args.title || 'Untitled Step',
+            is_completed: false,
+            sort_order: args.orderIndex || 0
           })
           if (addStepError) throw addStepError
           responseText += `Added goal step: ${args.title || 'Untitled Step'}\n`
@@ -811,10 +810,9 @@ When the user asks about their day, say: "I've analyzed your goal [Goal Name]. B
           break
         case 'modifyGoalStep':
           const { error: modifyStepError } = await supabaseClient.from('goal_steps').update({
-            title: args.newTitle,
-            description: args.newDescription,
+            step_text: args.newTitle,
             is_completed: args.newIsCompleted,
-            order_index: args.newOrderIndex
+            sort_order: args.newOrderIndex
           }).eq('id', args.stepId).eq('user_id', userId)
           if (modifyStepError) throw modifyStepError
           responseText += `Modified goal step: ${args.newTitle}\n`

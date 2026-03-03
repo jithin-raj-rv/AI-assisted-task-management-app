@@ -17,30 +17,14 @@ class UserFeedbackSyncService {
       return;
     }
 
-    try {
-      final feedbackData = await _supabase.from('user_feedback').select('*').eq('user_id', user.id) as List;
-      final feedbacks = feedbackData.map((f) {
-        return UserFeedback(
-          id: f['id'],
-          feedback: f['feedback'],
-          timestamp: DateTime.parse(f['timestamp']),
-          userId: f['user_id'],
-        );
-      }).toList();
-
+    final stream = _supabase.from('user_feedback').stream(primaryKey: ['id']).eq('user_id', user.id);
+    stream.listen((payload) async {
       final box = await Hive.openBox<UserFeedback>('user_feedback');
-      final newFeedbacks = {for (var feedback in feedbacks) feedback.id!: feedback};
-      final oldKeys = box.keys.toSet();
-      final keysToDelete = oldKeys.difference(newFeedbacks.keys.toSet());
-      if (keysToDelete.isNotEmpty) {
-        box.deleteAll(keysToDelete);
+      for (final record in payload) {
+        final feedback = UserFeedback.fromJson(record);
+        await box.put(feedback.id, feedback);
       }
-      if (newFeedbacks.isNotEmpty) {
-        box.putAll(newFeedbacks);
-      }
-    } catch (e) {
-      print('[UserFeedbackSync] Error syncing from Supabase: $e');
-    }
+    });
   }
 
   Future<void> syncToSupabase() async {
@@ -67,7 +51,7 @@ class UserFeedbackSyncService {
             .maybeSingle();
 
         if (existing == null) {
-           final supabaseData = {
+          final supabaseData = {
             'id': feedback.id,
             'user_id': user.id,
             'feedback': feedback.feedback,

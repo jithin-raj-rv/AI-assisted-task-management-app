@@ -20,8 +20,10 @@ import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/models/user_feedback_model.dart';
 import 'package:to_do_list/models/personality_trait_model.dart';
 import 'package:to_do_list/models/additional_info_model.dart';
+import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
+import 'package:to_do_list/cache/scheduled_notification_cache.dart';
 import 'package:to_do_list/config/supabase_config.dart';
 import 'package:to_do_list/services/supabase_gemini_service.dart';
 import 'package:to_do_list/providers.dart';
@@ -36,24 +38,140 @@ final localNotificationService = NotificationService();
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> onNotificationResponse(String? payload) async {
-  print("Notification response received with payload: $payload");
-  if (payload != null && payload.startsWith('timer_prompt_')) {
-    final parts = payload.split('_');
+  debugPrint("Notification response received with payload: $payload");
+
+  if (payload == null) return;
+
+  // split off any action button key (AwesomeNotifications appends "||action:KEY")
+  String base = payload;
+  String? action;
+  if (payload.contains('||action:')) {
+    final parts = payload.split('||action:');
+    base = parts[0];
+    action = parts[1];
+  }
+
+  // ---------------- timer prompt handling (unchanged) ----------------
+  if (base.startsWith('timer_prompt_')) {
+    final parts = base.split('_');
     if (parts.length >= 3) {
       final promptId = parts[2];
-      print("Extracted promptId from notification: $promptId");
-      // Find the prompt text from the local cache
-      final prompt = await TimerPromptCache().get(promptId) ?? TimerPrompt(id: '', prompt: '', scheduledTime: DateTime.now());
+      debugPrint("Extracted promptId from notification: $promptId");
+      final prompt = await TimerPromptCache().get(promptId) ??
+          TimerPrompt(id: '', prompt: '', scheduledTime: DateTime.now());
 
       if (prompt.prompt.isNotEmpty && navigatorKey.currentContext != null) {
-        print("Showing timer prompt dialog for prompt: ${prompt.prompt}");
         showDialog(
           context: navigatorKey.currentContext!,
           builder: (context) => TimerPromptExecutionDialog(prompt: prompt),
         );
-      } else {
-        print("Prompt not found or navigator not available");
       }
+    }
+  }
+
+  // ---------------- reminder option handling ----------------
+  if (base.startsWith('reminder_') && action != null) {
+    // try to locate the associated notification in cache/provider
+    List<ScheduledNotification> allReminders = [];
+    try {
+      if (navigatorKey.currentContext != null) {
+        final container = ProviderScope.containerOf(navigatorKey.currentContext!, listen: false);
+        allReminders = container.read(scheduledNotificationsViewModelProvider).notifications;
+      } else {
+        allReminders = await ScheduledNotificationCache().getAll();
+      }
+    } catch (e) {
+      // fallback to direct cache if anything goes wrong with provider
+      allReminders = await ScheduledNotificationCache().getAll();
+    }
+
+    final match = allReminders.cast<ScheduledNotification?>().firstWhere(
+        (n) => n != null && n.payload == base,
+        orElse: () => null);
+
+    if (match != null) {
+      debugPrint('Found reminder for payload; submitting feedback "$action"');
+
+      // use the view model helper so behavior stays consistent with UI
+      if (navigatorKey.currentContext != null) {
+        final container = ProviderScope.containerOf(navigatorKey.currentContext!, listen: false);
+        final vm = container.read(reminderPageViewModelProvider);
+        await vm.processFeedback(match, action, context: navigatorKey.currentContext!);
+      } else {
+        // if we have no context we still want to process the logic
+        final tempContainer = ProviderContainer();
+        final vm = tempContainer.read(reminderPageViewModelProvider);
+        await vm.processFeedback(match, action);
+      }
+    }
+  }
+
+  // ---------------- reminder answerBack handling ----------------
+  if (base.startsWith('reminder_') && action == null) {
+    // Find the reminder
+    List<ScheduledNotification> allReminders = [];
+    try {
+      if (navigatorKey.currentContext != null) {
+        final container = ProviderScope.containerOf(navigatorKey.currentContext!, listen: false);
+        allReminders = container.read(scheduledNotificationsViewModelProvider).notifications;
+      } else {
+        allReminders = await ScheduledNotificationCache().getAll();
+      }
+    } catch (e) {
+      allReminders = await ScheduledNotificationCache().getAll();
+    }
+
+    final reminder = allReminders.cast<ScheduledNotification?>().firstWhere(
+        (n) => n != null && n.payload == base,
+        orElse: () => null);
+
+    // Show reply dialog for answerBack type reminders
+    if (reminder != null && reminder.reminderType == ReminderType.answerBack && navigatorKey.currentContext != null) {
+      debugPrint('Showing answerBack dialog for: ${reminder.title}');
+      
+      final TextEditingController answerController = TextEditingController();
+      await showDialog<void>(
+        context: navigatorKey.currentContext!,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(reminder.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (reminder.body != null && reminder.body!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(reminder.body!),
+                ),
+              TextField(
+                controller: answerController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter your answer',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final answer = answerController.text.trim();
+                Navigator.pop(dialogContext);
+                if (answer.isNotEmpty && navigatorKey.currentContext != null) {
+                  final container = ProviderScope.containerOf(navigatorKey.currentContext!, listen: false);
+                  final vm = container.read(reminderPageViewModelProvider);
+                  await vm.processFeedback(reminder, answer, context: navigatorKey.currentContext!);
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }
@@ -495,7 +613,6 @@ class _UserInfoCollectionDialogState extends ConsumerState<UserInfoCollectionDia
           ],
         );
     }
-    return const SizedBox.shrink();
   }
 
   String _generateInitialPrompt() {

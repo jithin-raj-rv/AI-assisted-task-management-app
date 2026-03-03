@@ -267,8 +267,8 @@ class _RemainderDialogBoxState extends ConsumerState<RemainderDialogBox> {
                     ),
                     child: DropdownButton<ReminderType>(
                       value: _selectedReminderType,
-                      dropdownColor: appTheme.background,
-                      style: TextStyle(color: appTheme.primary, fontWeight: FontWeight.bold),
+                      dropdownColor: appTheme.primary,
+                      style: TextStyle(color: appTheme.background),
                       underline: const SizedBox(),
                       onChanged: (ReminderType? newValue) {
                         if (newValue != null) {

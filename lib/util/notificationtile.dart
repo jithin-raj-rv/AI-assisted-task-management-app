@@ -88,7 +88,7 @@ class _NotificationTileState extends ConsumerState<NotificationTile> {
                   child: Text(
                     widget.notification.body!,
                     style: TextStyle(
-                      color: appTheme.background.withOpacity(0.7),
+                      color: appTheme.foreground.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -98,7 +98,7 @@ class _NotificationTileState extends ConsumerState<NotificationTile> {
                 child: Text(
                   'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(widget.notification.scheduledDate.toLocal())}',
                   style: TextStyle(
-                    color: appTheme.background.withOpacity(0.6),
+                    color: appTheme.foreground.withOpacity(0.6),
                     fontSize: 12,
                   ),
                 ),
@@ -109,7 +109,7 @@ class _NotificationTileState extends ConsumerState<NotificationTile> {
                 child: Text(
                   'Type: ${widget.notification.reminderType.toString().split('.').last}',
                   style: TextStyle(
-                    color: appTheme.background.withOpacity(0.6),
+                    color: appTheme.foreground.withOpacity(0.5),
                     fontStyle: FontStyle.italic,
                     fontSize: 12,
                   ),
@@ -123,6 +123,7 @@ class _NotificationTileState extends ConsumerState<NotificationTile> {
                     spacing: 8.0,
                     children: widget.notification.options!.map((option) {
                       return ActionChip(
+                        side: BorderSide(color: appTheme.foreground.withOpacity(0.25)),
                         label: Text(option),
                         onPressed: () {
                           widget.onFeedback(widget.notification, option);
@@ -140,15 +141,15 @@ class _NotificationTileState extends ConsumerState<NotificationTile> {
                       Expanded(
                         child: TextField(
                           controller: _answerController,
-                          style: TextStyle(color: appTheme.background),
+                          style: TextStyle(color: appTheme.foreground.withOpacity(0.65)),
                           decoration: InputDecoration(
                             hintText: 'Enter answer',
-                            hintStyle: TextStyle(color: appTheme.background.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: appTheme.foreground.withOpacity(0.5)),
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.send, color: appTheme.background),
+                        icon: Icon(Icons.send, color: appTheme.foreground),
                         onPressed: () {
                           if (_answerController.text.isNotEmpty) {
                             widget.onFeedback(widget.notification, _answerController.text);

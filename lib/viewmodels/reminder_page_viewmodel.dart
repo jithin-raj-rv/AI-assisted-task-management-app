@@ -178,7 +178,14 @@ class ReminderPageViewModel {
     }
   }
 
-  Future<void> handleFeedback(BuildContext context, ScheduledNotification notification, String response) async {
+  /// Core feedback processing logic.  Can be called from anywhere
+  /// (including notification handlers) and optionally shows a SnackBar if
+  /// a [BuildContext] is provided.
+  Future<void> processFeedback(
+    ScheduledNotification notification,
+    String response, {
+    BuildContext? context,
+  }) async {
     final now = DateTime.now();
     final userId = ref.read(currentUserProvider)?.id;
     final feedback = UserFeedback(
@@ -191,9 +198,15 @@ class ReminderPageViewModel {
     await ref.read(userFeedbackViewModelProvider.notifier).addFeedback(feedback);
     await ref.read(scheduledNotificationsViewModelProvider.notifier).deleteNotification(notification.id);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Feedback submitted: $response')),
-    );
+    if (context != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Feedback submitted: $response')),
+      );
+    }
+  }
+
+  Future<void> handleFeedback(BuildContext context, ScheduledNotification notification, String response) async {
+    await processFeedback(notification, response, context: context);
   }
 
   Future<void> handleAIPrompt(BuildContext context, ScheduledNotification notification) async {

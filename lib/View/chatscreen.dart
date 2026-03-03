@@ -8,6 +8,8 @@ import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/View/chathistoryscreen.dart'; // Import the new chat history screen
 import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/util/chatbubble.dart';
+import 'package:to_do_list/util/icongradient.dart';
+import 'package:to_do_list/util/tittlegradient.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String? initialPrompt;
@@ -166,21 +168,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appTheme.background,
-        title: Text(
-          currentTitle,
-          style: TextStyle(
-              fontSize: 25.0,
-              fontWeight: FontWeight.bold,
-              color: appTheme.actionGradientStart),
+        title: Tittlegradient(
+          text: currentTitle,
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_comment), // Icon for new chat
+            icon: const Icongradient(icon:Icons.add_comment), // Icon for new chat
             onPressed: _startNewChat,
             tooltip: 'New Chat',
           ),
           IconButton(
-            icon: const Icon(Icons.history), // Icon for chat history
+            icon: const Icongradient(icon:Icons.history), // Icon for chat history
             onPressed: _navigateToChatHistory,
             tooltip: 'Chat History',
           ),

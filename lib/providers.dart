@@ -67,6 +67,7 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
       await ref.read(timerPromptSyncServiceProvider).syncFromSupabase();
       await ref.read(personalitySyncServiceProvider).syncFromSupabase();
       await ref.read(additionalInfoSyncServiceProvider).syncFromSupabase();
+      await ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
 
       _hasSynced = true;
       state = const AsyncData(null);
@@ -183,6 +184,7 @@ class AuthStateManager extends Notifier<bool> {
     ref.read(personalitySyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(timerPromptSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
 
     print('[AuthStateManager] Realtime subscriptions set up');
   }
@@ -201,6 +203,7 @@ class AuthStateManager extends Notifier<bool> {
     ref.read(personalitySyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(timerPromptSyncServiceProvider).clearRealtimeSubscriptions();
+    // No need to clear for userFeedback, as it's a stream that will be re-established on next login.
 
     print('[AuthStateManager] Realtime subscriptions cleared');
   }
