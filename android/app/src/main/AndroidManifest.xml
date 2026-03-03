@@ -44,30 +44,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Awesome Notifications configuration -->
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-            android:exported="true">
-        </receiver>
-        
-        <!-- Boot receiver to reschedule notifications after device restart -->
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ActionBootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
-        
-        <!-- Awesome Notifications service -->
-        <service
-            android:name="dexterous.com.flutter_local_notifications.FlutterLocalNotificationsService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.dexterous.flutterlocalnotifications.DISPLAY_NOTIFICATION" />
-            </intent-filter>
-        </service>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

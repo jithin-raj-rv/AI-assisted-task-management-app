@@ -112,6 +112,39 @@ class AwesomeNotificationService {
     print('Notification show completed');
   }
 
+  /// Schedule a notification immediately when it's created
+  /// This ensures notifications are scheduled locally without relying on background services
+  Future<void> scheduleNotificationImmediately({
+    required ScheduledNotification notification,
+  }) async {
+    final now = DateTime.now();
+    final scheduledDate = notification.scheduledDate;
+    final timeUntilNotification = scheduledDate.difference(now);
+    
+    print('╔═══════════════════════════════════════════════════════════════');
+    print('║ [AwesomeNotification] IMMEDIATE SCHEDULE REQUEST');
+    print('║ Notification ID: ${notification.id}');
+    print('║ Title: ${notification.title}');
+    print('║ Scheduled Date (UTC): $scheduledDate');
+    print('║ Current Time: $now');
+    print('║ Time Until Notification: ${timeUntilNotification.inMinutes} minutes');
+    print('║ Is In Past: ${scheduledDate.isBefore(now)}');
+    print('╚═══════════════════════════════════════════════════════════════');
+    
+    // Only schedule if the notification is in the future
+    if (scheduledDate.isBefore(now)) {
+      print('⚠️  Notification is in the past, skipping immediate schedule');
+      return;
+    }
+
+    try {
+      await showScheduledNotification(notification: notification);
+      print('✅ Notification scheduled successfully');
+    } catch (e) {
+      print('❌ Failed to schedule notification: $e');
+    }
+  }
+
   Future<void> showScheduledNotification({
     required ScheduledNotification notification,
   }) async {

@@ -4,6 +4,7 @@ import 'package:to_do_list/models/scheduled_notification_model.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 import 'package:to_do_list/cache/scheduled_notification_cache.dart';
 import 'package:to_do_list/main.dart';
+import 'package:to_do_list/services/user_device_service.dart';
 
 class ReminderSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -13,6 +14,27 @@ class ReminderSyncService {
   List<dynamic> _activeChannels = [];
 
   ReminderSyncService(this._connectivityService);
+
+  /// Convert a string ID to a valid positive 32-bit signed integer
+  /// If the ID is too large or negative, hash it to fit within the positive 32-bit range
+  int _convertIdTo32Bit(String id) {
+    try {
+      final parsedId = int.parse(id);
+      // Check if it's within 32-bit signed integer range and positive
+      if (parsedId > 0 && parsedId <= 2147483647) {
+        return parsedId;
+      }
+      // If out of range or negative, hash it and ensure positive
+      final hash = id.hashCode;
+      final positiveHash = hash.abs();
+      return positiveHash % 2147483647;
+    } catch (e) {
+      // If parsing fails, hash the string ID and ensure positive
+      final hash = id.hashCode;
+      final positiveHash = hash.abs();
+      return positiveHash % 2147483647;
+    }
+  }
 
   /// Clear realtime subscriptions
   Future<void> clearRealtimeSubscriptions() async {
@@ -72,6 +94,27 @@ class ReminderSyncService {
       }
       if (newReminders.isNotEmpty) {
         box.putAll(newReminders);
+      }
+
+      // Mark device as scheduled if there are future reminders
+      bool hasFutureReminders = false;
+      final now = DateTime.now();
+      for (final reminder in reminders) {
+        if (reminder.scheduledDate.isAfter(now)) {
+          hasFutureReminders = true;
+          break;
+        }
+      }
+
+      if (hasFutureReminders) {
+        try {
+          final userDeviceService = UserDeviceService(_connectivityService);
+          // Set to false to trigger queue process on database side if needed
+          await userDeviceService.triggerQueueProcessing();
+          print('[ReminderSync] Triggered queue processing due to future reminders found during sync');
+        } catch (e) {
+          print('[ReminderSync] Failed to trigger queue processing during sync: $e');
+        }
       }
     } catch (e) {
       print('[ReminderSync] Error syncing reminders: $e');
@@ -205,6 +248,23 @@ class ReminderSyncService {
 
     await _supabase.from('reminders').insert(supabaseData);
     await _cache.put(reminder.id, reminder);
+    
+    // Schedule the notification immediately when created
+    try {
+      await localNotificationService.showScheduledNotification(notification: reminder);
+      print('[ReminderSync] Notification scheduled immediately for: ${reminder.id}');
+      
+      // Trigger queue processing when a reminder is created
+      try {
+        final userDeviceService = UserDeviceService(_connectivityService);
+        await userDeviceService.triggerQueueProcessing();
+        print('[ReminderSync] Triggered queue processing for new reminder: ${reminder.id}');
+      } catch (e) {
+        print('[ReminderSync] Failed to trigger queue processing: $e');
+      }
+    } catch (e) {
+      print('[ReminderSync] Failed to schedule notification immediately for ${reminder.id}: $e');
+    }
   }
 
   /// Update reminder
@@ -227,6 +287,26 @@ class ReminderSyncService {
 
     await _supabase.from('reminders').update(supabaseData).eq('id', id);
     await _cache.put(id, reminder);
+    
+    // Reschedule the notification when updated
+    try {
+      // First cancel the existing notification
+      await localNotificationService.cancelNotification(id);
+      // Then schedule the updated notification
+      await localNotificationService.showScheduledNotification(notification: reminder);
+      print('[ReminderSync] Notification rescheduled for: ${reminder.id}');
+      
+      // Trigger queue processing when a reminder is updated
+      try {
+        final userDeviceService = UserDeviceService(_connectivityService);
+        await userDeviceService.triggerQueueProcessing();
+        print('[ReminderSync] Triggered queue processing for updated reminder: ${reminder.id}');
+      } catch (e) {
+        print('[ReminderSync] Failed to trigger queue processing: $e');
+      }
+    } catch (e) {
+      print('[ReminderSync] Failed to reschedule notification for ${reminder.id}: $e');
+    }
   }
 
   /// Delete reminder

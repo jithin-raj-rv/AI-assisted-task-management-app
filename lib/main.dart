@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:to_do_list/Notification/notification_service.dart';
-import 'package:to_do_list/foreground_task_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:to_do_list/View/homepage.dart';
@@ -12,7 +10,6 @@ import 'package:to_do_list/View/login_page.dart';
 import 'package:to_do_list/View/user_info_collection_page.dart';
 import 'package:to_do_list/View/onboarding_dialog.dart';
 import 'package:to_do_list/View/chatscreen.dart';
-import 'package:to_do_list/test_notification.dart';
 import 'package:to_do_list/models/goal_step_model.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
@@ -29,7 +26,10 @@ import 'package:to_do_list/config/supabase_config.dart';
 import 'package:to_do_list/services/supabase_gemini_service.dart';
 import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/sync_providers.dart';
-import 'package:to_do_list/services/foreground_service_manager.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:to_do_list/services/user_device_service.dart';
+import 'package:to_do_list/services/connectivity_service.dart';
 
 final localNotificationService = NotificationService();
 
@@ -129,6 +129,10 @@ Future<void> rescheduleNotifications() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   await Hive.initFlutter();
 
   // Register Hive Adapters
@@ -192,9 +196,8 @@ void main() async {
     
   }
 
-  // Reschedule notifications (must be after init to ensure timezone is initialized)
-  // This should be called regardless of permission status to ensure existing notifications work
-  await rescheduleNotifications();
+  // Note: rescheduleNotifications() is now called after data sync in AuthWrapper
+  // to ensure notifications from server are properly scheduled as local notifications
   
 
   await Supabase.initialize(
@@ -202,27 +205,6 @@ void main() async {
     anonKey: supabaseAnonKey,
   );
 
-  // Initialize foreground task for persistent background monitoring
-  FlutterForegroundTask.init(
-    androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'foreground_service',
-      channelName: 'Todo App Background',
-      channelDescription: 'App is running in background to monitor reminders',
-      channelImportance: NotificationChannelImportance.HIGH,
-      priority: NotificationPriority.HIGH,
-    ),
-    iosNotificationOptions: const IOSNotificationOptions(),
-    foregroundTaskOptions: ForegroundTaskOptions(
-      eventAction: ForegroundTaskEventAction.repeat(60000), // Check every 60 seconds
-      autoRunOnBoot: true,
-      allowWakeLock: true,
-      allowWifiLock: true,
-    ),
-  );
-
-  // Initialize foreground service manager (restores service if was previously enabled)
-  final foregroundServiceManager = ForegroundServiceManager();
-  await foregroundServiceManager.init();
 
   // Listen to auth state changes to (re)attach realtime subscriptions reliably
   Supabase.instance.client.auth.onAuthStateChange.listen((event) {
@@ -256,17 +238,24 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
 
     final authState = ref.watch(authStateProvider);
 
-    return authState.when(
+          return authState.when(
       data: (data) {
         if (data.session != null) {
           final syncState = ref.watch(dataSyncProvider);
 
           return syncState.when(
             data: (_) {
-              // After sync completes, check for onboarding
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+              // After sync completes, reschedule notifications and setup FCM for authenticated user
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
                 final userHasData = ref.read(userHasDataProvider);
                 _checkAndShowOnboarding(userHasData);
+                
+                // Reschedule notifications after data sync is complete
+                await rescheduleNotifications();
+                
+                // Setup FCM for authenticated user (on app startup or login)
+                final authService = ref.read(authServiceProvider);
+                await authService.setupFCMForAuthenticatedUser();
               });
               return const Homepage();
             },
@@ -335,6 +324,17 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
       localNotificationService.rescheduleAllNotifications(
         Hive.box<ScheduledNotification>('scheduled_notifications').values.toList(),
       );
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      print('[AppLifecycle] App going to background/closed - marking device as not scheduled');
+      // Mark device as not scheduled when app goes to background or closes
+      try {
+        final connectivityService = ConnectivityService();
+        final userDeviceService = UserDeviceService(connectivityService);
+        userDeviceService.markAsNotScheduled();
+        print('[AppLifecycle] Marked device as not scheduled');
+      } catch (e) {
+        print('[AppLifecycle] Failed to mark device as not scheduled: $e');
+      }
     }
   }
 

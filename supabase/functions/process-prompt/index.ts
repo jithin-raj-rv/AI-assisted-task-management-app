@@ -926,7 +926,7 @@ When the user asks about their day, say: "I've analyzed your goal [Goal Name]. B
             scheduled_date: formatTimestamp(args.scheduledDate),
             payload: args.title || 'Untitled Reminder', // Using title as payload for now
             reminder_type: args.reminderType || 'basic',
-            options: args.options || null, // Store as native array, not JSON string
+            options: args.options ? JSON.stringify(args.options) : null, // Store as JSON string
             expected_answer: args.expectedAnswer || '',
             ai_prompt: args.aiPrompt || ''
           })
@@ -945,7 +945,7 @@ When the user asks about their day, say: "I've analyzed your goal [Goal Name]. B
             scheduled_date: formatTimestamp(args.newScheduledDate),
             payload: args.newTitle, // Update payload as well
             reminder_type: args.newReminderType,
-            options: args.newOptions || null, // Store as native array, not JSON string
+            options: args.newOptions ? JSON.stringify(args.newOptions) : null, // Store as JSON string
             expected_answer: args.newExpectedAnswer,
             ai_prompt: args.newAiPrompt,
             updated_at: new Date().toISOString()

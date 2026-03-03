@@ -15,16 +15,56 @@ import 'package:to_do_list/services/settings_sync_service.dart';
 import 'package:to_do_list/services/timer_prompt_sync_service.dart';
 import 'package:to_do_list/services/todo_sync_service.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
+import 'package:to_do_list/services/fcm_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   Future<void> signUp(String email, String password) async {
     await _supabase.auth.signUp(email: email, password: password);
+    // After successful sign up, sync data from Supabase to cache
+    final connectivityService = ConnectivityService();
+
+    if (connectivityService.currentStatus == ConnectivityStatus.online) {
+      // Register FCM Token after successful login
+      try {
+        final fcmService = FcmService();
+        await fcmService.saveFCMToken();
+      } catch (e) {
+        print('Failed to save FCM token: $e');
+      }
+    }
+  }
+
+  /// Setup FCM for authenticated user - handles initialization and token saving
+  Future<void> setupFCMForAuthenticatedUser() async {
+    try {
+      print('[AuthService] Setting up FCM for authenticated user');
+      final fcmService = FcmService();
+      await fcmService.initialize();
+      await fcmService.saveFCMTokenWithRetry();
+      print('[AuthService] FCM setup completed successfully');
+      
+      // Listen for FCM token refresh
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+        print('[AuthService] FCM token refreshed: $newToken');
+        try {
+          await fcmService.saveFCMToken();
+          print('[AuthService] Updated FCM token saved successfully');
+        } catch (e) {
+          print('[AuthService] Failed to save refreshed FCM token: $e');
+        }
+      });
+    } catch (e) {
+      print('[AuthService] Failed to setup FCM for authenticated user: $e');
+    }
   }
 
   Future<void> signIn(String email, String password) async {
+    print('[AuthService] Attempting to sign in with email: $email');
     await _supabase.auth.signInWithPassword(email: email, password: password);
+    print('[AuthService] Sign in successful');
 
     // After successful sign in, sync data from Supabase to cache
     final connectivityService = ConnectivityService();
@@ -50,6 +90,9 @@ class AuthService {
 
       final additionalInfoSyncService = AdditionalInfoSyncService(connectivityService);
       await additionalInfoSyncService.syncFromSupabase();
+
+      // Setup FCM for authenticated user
+      await setupFCMForAuthenticatedUser();
     }
   }
 

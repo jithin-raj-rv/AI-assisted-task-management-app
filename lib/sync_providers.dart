@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
+import 'package:to_do_list/services/fcm_service.dart';
 import 'package:to_do_list/services/todo_sync_service.dart';
 import 'package:to_do_list/services/goal_sync_service.dart';
 import 'package:to_do_list/services/goal_step_sync_service.dart';
@@ -58,4 +59,8 @@ final personalitySyncServiceProvider = Provider<PersonalitySyncService>((ref) {
 final additionalInfoSyncServiceProvider = Provider<AdditionalInfoSyncService>((ref) {
   final connectivity = ref.watch(connectivityServiceProvider);
   return AdditionalInfoSyncService(connectivity);
+});
+
+final fcmServiceProvider = Provider<FcmService>((ref) {
+  return FcmService();
 });

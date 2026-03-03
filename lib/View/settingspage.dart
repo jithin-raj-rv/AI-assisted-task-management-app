@@ -46,13 +46,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final themeNotifier = ref.watch(themeProvider.notifier);
     final isDarkMode = ref.watch(themeProvider).background == Colors.black;
     final appTheme = ref.watch(themeProvider);
-    final foregroundServiceManager =
-        ref.watch(foregroundServiceManagerProvider);
-    final serviceRunningAsync = ref.watch(foregroundServiceRunningProvider);
-    final isServiceRunning = serviceRunningAsync.maybeWhen(
-      data: (value) => value,
-      orElse: () => false,
-    );
 
     return Scaffold(
       appBar: AppBar(
@@ -68,43 +61,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               themeNotifier.toggleTheme();
             },
           ),
-          SwitchListTile(
-            title: const Text('Background Reminder Monitoring'),
-            subtitle:
-                const Text('Show persistent notification for reminder alerts'),
-            value: isServiceRunning,
-            onChanged: (value) async {
-              if (value) {
-                // First request battery optimization exemption for reliable background alarms
-                await foregroundServiceManager.requestBatteryOptimizationExemption();
-              }
-              await foregroundServiceManager.setServiceEnabled(value);
-              if (mounted) {
-                ref.invalidate(foregroundServiceRunningProvider);
-              }
-            },
-          ),
-          if (!isServiceRunning)
-            ListTile(
-              title: const Text('Disable Battery Optimization'),
-              subtitle: const Text(
-                  'Required for reliable background reminders (opens settings)'),
-              onTap: () async {
-                await foregroundServiceManager.requestBatteryOptimizationExemption();
-              },
-            ),
-          if (isServiceRunning)
-            ListTile(
-              title: const Text('Stop Background Service'),
-              subtitle:
-                  const Text('Force stop the background reminder service'),
-              onTap: () async {
-                await foregroundServiceManager.stopService();
-                if (mounted) {
-                  ref.invalidate(foregroundServiceRunningProvider);
-                }
-              },
-            ),
           ListTile(
             title: const Text('Request Notification Permission'),
             subtitle:

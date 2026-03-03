@@ -2,6 +2,8 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:to_do_list/models/scheduled_notification_model.dart';
+import 'package:to_do_list/services/user_device_service.dart';
+import 'package:to_do_list/services/connectivity_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -43,9 +45,22 @@ class NotificationService {
 
   Future<bool> requestNotificationPermission() async {
     bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    print('[Notification] Current permission status: $isAllowed');
+    
     if (!isAllowed) {
+      print('[Notification] Requesting notification permission...');
       isAllowed = await AwesomeNotifications().requestPermissionToSendNotifications();
+      print('[Notification] Permission request result: $isAllowed');
+      
+      if (isAllowed) {
+        print('[Notification] ✅ Notification permission granted');
+      } else {
+        print('[Notification] ❌ Notification permission denied');
+      }
+    } else {
+      print('[Notification] ✅ Notification permission already granted');
     }
+    
     return isAllowed;
   }
 
@@ -104,13 +119,27 @@ class NotificationService {
       List<ScheduledNotification> notifications) async {
     await cancelAllNotifications();
     final now = DateTime.now();
+    bool hasFutureNotifications = false;
 
     for (final notification in notifications) {
       // Only schedule notifications that are in the future
       if (notification.scheduledDate.isAfter(now)) {
         await showScheduledNotification(notification: notification);
+        hasFutureNotifications = true;
       } else {
         print('[Notification] Skipping past notification: ${notification.id}');
+      }
+    }
+
+    // Mark device as scheduled if there are future notifications
+    if (hasFutureNotifications) {
+      try {
+        final connectivityService = ConnectivityService();
+        final userDeviceService = UserDeviceService(connectivityService);
+        await userDeviceService.markAsScheduled();
+        print('[Notification] Marked device as scheduled due to future notifications');
+      } catch (e) {
+        print('[Notification] Failed to mark device as scheduled: $e');
       }
     }
   }
