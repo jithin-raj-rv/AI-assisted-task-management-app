@@ -100,9 +100,15 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
       backgroundColor: appTheme.background,
       content: Column(
         children: [
-          Gradienttextfield(controller: widget.controller, text: "Goal Name"),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
+            child: Gradienttextfield(controller: widget.controller, text: "Goal Name"),
+          ),
       
-          Gradienttextfield(controller: _descriptionController, text: "Description (optional)"),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: Gradienttextfield(controller: _descriptionController, text: "Description (optional)"),
+          ),
       
           Row(
             children: [
@@ -148,9 +154,9 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
               },
             ),
           ),
-      
+      SizedBox(height: 10,),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 40,),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [

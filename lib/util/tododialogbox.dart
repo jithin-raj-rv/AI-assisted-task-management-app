@@ -100,9 +100,15 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
       backgroundColor: appTheme.background,
       content: Column(
         children: [
-          Gradienttextfield(controller: widget.controller, text: "Task Name"),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
+            child: Gradienttextfield(controller: widget.controller, text: "Task Name"),
+          ),
       
-          Gradienttextfield(controller: _descriptionController, text: "Description (optionsl)"),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: Gradienttextfield(controller: _descriptionController, text: "Description (optionsl)"),
+          ),
       
           Row(
             children: [
@@ -168,9 +174,9 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
               },
             ),
           ),
-      
+      SizedBox(height: 10,),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 40,),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [

@@ -50,7 +50,7 @@ Future<void> onNotificationResponse(String? payload) async {
     action = parts[1];
   }
 
-  // ---------------- timer prompt handling (unchanged) ----------------
+  // ---------------- timer prompt handling (unchanged) remove this, it timer prompt is not notificaton to the user ----------------
   if (base.startsWith('timer_prompt_')) {
     final parts = base.split('_');
     if (parts.length >= 3) {
@@ -195,7 +195,7 @@ Future<void> migrateData() async {
   // Migrate todos
   final rawTodoList = oldBox.get("TODOLIST") as List<dynamic>? ?? [];
   for (int i = 0; i < rawTodoList.length; i++) {
-    final todo = Todo.fromHiveList(rawTodoList[i] as List<dynamic>);
+    final todo = rawTodoList[i] as Todo;
     todo.id ??= i.toString();
     await todosBox.put(todo.id!, todo);
   }
@@ -210,7 +210,7 @@ Future<void> migrateData() async {
   // Migrate timer prompts
   final rawTimerPrompts = oldBox.get("TIMER_PROMPTS") as List<dynamic>? ?? [];
   for (var item in rawTimerPrompts) {
-    final prompt = TimerPrompt.fromHiveList(item as List<dynamic>);
+    final prompt = item as TimerPrompt;
     await timerPromptsBox.put(prompt.id, prompt);
   }
 

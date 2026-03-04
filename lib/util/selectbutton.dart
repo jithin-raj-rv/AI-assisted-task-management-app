@@ -50,11 +50,11 @@ class _SelectbuttonState extends ConsumerState<Selectbutton> {
   padding: const EdgeInsets.all(2), // gradient border thickness
   child: ToggleButtons(
     isSelected: _isSelected,
-    fillColor: Colors.transparent, // important
-    selectedColor: appTheme.accentGradientEnd,
-    color: appTheme.textGradientStart,
-    borderColor: Colors.transparent,
-    selectedBorderColor: appTheme.quatenery,
+    fillColor: appTheme.toggleButtonsTheme.fillColor,
+    selectedColor: appTheme.toggleButtonsTheme.selectedColor,
+    color: appTheme.toggleButtonsTheme.color,
+    borderColor: appTheme.toggleButtonsTheme.borderColor,
+    selectedBorderColor: appTheme.toggleButtonsTheme.selectedBorderColor,
     borderRadius: BorderRadius.circular(8),
     onPressed: (int index) {
       setState(() {

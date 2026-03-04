@@ -312,31 +312,6 @@ User additional info: ${JSON.stringify(additionalInfo)}
     })
 
     // Define tools
-    const themeTool = {
-      functionDeclarations: [{
-        name: 'updateAppColors',
-        description: 'Updates the app theme colors based on user preferences.',
-        parameters: {
-          type: 'object',
-          properties: {
-            primaryHex: { type: 'string', description: 'Hex code for the primary color' },
-            backgroundHex: { type: 'string', description: 'Hex code for the background color' },
-            secondaryHex: { type: 'string', description: 'Hex code for the secondary color' },
-            tertiaryHex: { type: 'string', description: 'Hex code for the tertiary color' },
-            primaryGradient1Hex: { type: 'string', description: 'Hex code for the first primary gradient color' },
-            primaryGradient2Hex: { type: 'string', description: 'Hex code for the second primary gradient color' },
-            secondaryGradient1Hex: { type: 'string', description: 'Hex code for the first secondary gradient color' },
-            secondaryGradient2Hex: { type: 'string', description: 'Hex code for the second secondary gradient color' },
-            tertiaryGradient1Hex: { type: 'string', description: 'Hex code for the first tertiary gradient color' },
-            tertiaryGradient2Hex: { type: 'string', description: 'Hex code for the second tertiary gradient color' },
-            backgroundGradient1Hex: { type: 'string', description: 'Hex code for the first background gradient color' },
-            backgroundGradient2Hex: { type: 'string', description: 'Hex code for the second background gradient color' }
-          },
-          required: ['primaryHex', 'backgroundHex', 'secondaryHex', 'tertiaryHex', 'primaryGradient1Hex', 'primaryGradient2Hex', 'secondaryGradient1Hex', 'secondaryGradient2Hex', 'tertiaryGradient1Hex', 'tertiaryGradient2Hex', 'backgroundGradient1Hex', 'backgroundGradient2Hex']
-        }
-      }]
-    }
-
     const todoTool = {
       functionDeclarations: [{
         name: 'addTodo',
@@ -676,7 +651,7 @@ User additional info: ${JSON.stringify(additionalInfo)}
     const chat = model.startChat({
       generationConfig,
       history: conversationHistory,
-      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
+      tools: [todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
     })
 
     const result = await chat.sendMessage([
@@ -783,12 +758,11 @@ User additional info: ${JSON.stringify(additionalInfo)}
           break
         case 'addTimerPrompt':
           const { error: addTimerError } = await supabaseClient.from('timer_prompts').insert({
-            id: Date.now().toString(),
             user_id: userId,
             prompt: args.prompt || 'No prompt',
             response: args.response || '',
             scheduled_time: formatTimestamp(args.scheduledTime),
-            is_recurring: args.isRecurring || false,
+            recurring_type: args.isRecurring ? 'DAILY' : null,
             weekdays: args.weekdays || [],
             sent: args.sent || false
           })
@@ -805,7 +779,7 @@ User additional info: ${JSON.stringify(additionalInfo)}
             prompt: args.newPrompt,
             response: args.newResponse,
             scheduled_time: formatTimestamp(args.newScheduledTime),
-            is_recurring: args.newIsRecurring,
+            recurring_type: args.newIsRecurring ? 'DAILY' : null,
             weekdays: args.newWeekdays,
             sent: args.newSent
           }).eq('id', args.promptId).eq('user_id', userId)
@@ -832,10 +806,6 @@ User additional info: ${JSON.stringify(additionalInfo)}
           }).eq('id', args.feedbackId).eq('user_id', userId)
           if (modifyFeedbackError) throw modifyFeedbackError
           responseText += `Modified feedback\n`
-          break
-        case 'updateAppColors':
-          // Handle theme update - this might not be stored in DB, but could be handled separately
-          responseText += `Updated app colors\n`
           break
         case 'addPersonalityTrait':
           const { error: addTraitError } = await supabaseClient.from('personality_traits').insert({

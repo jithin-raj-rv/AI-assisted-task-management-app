@@ -49,7 +49,7 @@ class TimerPromptViewModel extends Notifier<TimerPromptState> {
         throw Exception('User not authenticated');
       }
 
-      final response = await SupabaseGeminiService.sendChatMessage(user.id, prompt.prompt);
+      final response = await SupabaseGeminiService.sendChatMessage(user.id, prompt.prompt ?? '');
       final timestamp = DateTime.now();
       final newEntry = "[${timestamp.toIso8601String()}] $response";
       final existing = await _cache.get(prompt.id);
@@ -58,8 +58,8 @@ class TimerPromptViewModel extends Notifier<TimerPromptState> {
           id: existing.id,
           prompt: existing.prompt,
           scheduledTime: existing.scheduledTime,
-          isRecurring: existing.isRecurring,
           weekdays: existing.weekdays,
+          recurringType: existing.recurringType,
           response: existing.response != null && existing.response!.isNotEmpty
               ? "$newEntry\n\n" + existing.response!
               : newEntry,

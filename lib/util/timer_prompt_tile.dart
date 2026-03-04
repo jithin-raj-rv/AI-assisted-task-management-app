@@ -55,7 +55,7 @@ class TimerPromptTile extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Smalltextgradient(
-                text: timerPrompt.prompt,
+                text: timerPrompt.prompt ?? '',
                 fontsize: 18,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -89,15 +89,18 @@ class TimerPromptTile extends ConsumerWidget {
   }
 
   String _getRecurrenceText(TimerPrompt prompt) {
-    if (!prompt.isRecurring) {
+    if (prompt.recurringType == null || prompt.recurringType == 'Never') {
       return 'Scheduled: ${DateFormat('MMM dd, yyyy - hh:mm a').format(prompt.scheduledTime.toLocal())}';
     }
-    if (prompt.weekdays == null || prompt.weekdays!.isEmpty) {
+    if (prompt.recurringType == 'Daily') {
       return 'Daily at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
     }
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final sortedDays = List<int>.from(prompt.weekdays!)..sort();
-    final dayNames = sortedDays.map((d) => days[d - 1]).join(', ');
-    return 'Weekly ($dayNames) at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
+    if (prompt.recurringType == 'Weekly' && prompt.weekdays != null && prompt.weekdays!.isNotEmpty) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final sortedDays = List<int>.from(prompt.weekdays!)..sort();
+      final dayNames = sortedDays.map((d) => days[d - 1]).join(', ');
+      return 'Weekly ($dayNames) at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
+    }
+    return '${prompt.recurringType} at ${DateFormat('hh:mm a').format(prompt.scheduledTime.toLocal())}';
   }
 }

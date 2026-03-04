@@ -67,17 +67,23 @@ class Todotile extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // checkbox
-                Checkbox(
-                  value: taskcompleted,
-                  onChanged: click,
-                  activeColor: Colors.black,
-                ),
-                // text with gradient
-                Flexible(
-                  child: Smalltextgradient(
-                    text: taskName,
-                    fontsize: 20,
-                    overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: taskcompleted,
+                        onChanged: click,
+                        activeColor: Colors.black,
+                      ),
+                      // text with gradient
+                      Flexible(
+                        child: Smalltextgradient(
+                          text: taskName,
+                          fontsize: 20,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Row(

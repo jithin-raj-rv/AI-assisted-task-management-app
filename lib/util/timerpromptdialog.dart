@@ -26,9 +26,8 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
   late TextEditingController _promptController;
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
-  bool _isRecurring = false;
   final List<int> _selectedWeekdays = [];
-  String _repeatOption = 'Never';
+  String _repeatOption = 'never';
 
   final List<String> _weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -40,13 +39,12 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
     if (widget.existingPrompt != null) {
       _selectedDate = widget.existingPrompt!.scheduledTime.toLocal();
       _selectedTime = TimeOfDay.fromDateTime(widget.existingPrompt!.scheduledTime.toLocal());
-      _isRecurring = widget.existingPrompt!.isRecurring;
       
-      if (_isRecurring && widget.existingPrompt!.weekdays != null && widget.existingPrompt!.weekdays!.isNotEmpty) {
-        _repeatOption = 'Weekly';
-        _selectedWeekdays.addAll(widget.existingPrompt!.weekdays!);
-      } else if (_isRecurring) {
-        _repeatOption = 'Daily';
+      if (widget.existingPrompt!.recurringType != null && widget.existingPrompt!.recurringType != 'never') {
+        _repeatOption = widget.existingPrompt!.recurringType!;
+        if (_repeatOption == 'weekly' && widget.existingPrompt!.weekdays != null) {
+          _selectedWeekdays.addAll(widget.existingPrompt!.weekdays!);
+        }
       }
     } else {
       _selectedDate = DateTime.now();
@@ -105,7 +103,7 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
     final now = DateTime.now();
     final userId = ref.read(currentUserProvider)?.id;
 
-    if (_repeatOption != 'Never') {
+    if (_repeatOption != 'never') {
       // Recurring
       final dt = DateTime(
         now.year,
@@ -119,8 +117,8 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
         id: widget.existingPrompt?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         prompt: text,
         scheduledTime: dt,
-        isRecurring: true,
-        weekdays: _repeatOption == 'Weekly' ? _selectedWeekdays : null,
+        weekdays: _repeatOption == 'weekly' ? _selectedWeekdays : null,
+        recurringType: _repeatOption.toLowerCase(),
         userId: userId,
         createdAt: widget.existingPrompt?.createdAt ?? now,
         updatedAt: now,
@@ -141,7 +139,7 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
         id: widget.existingPrompt?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         prompt: text,
         scheduledTime: scheduledDateTime,
-        isRecurring: false,
+        recurringType: _repeatOption.toLowerCase(),
         userId: userId,
         createdAt: widget.existingPrompt?.createdAt ?? now,
         updatedAt: now,
@@ -179,7 +177,7 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
             children: [
               Gradienttextfield(controller: _promptController, text: 'Prompt'),
               const SizedBox(height: 16),
-
+    
               // Repeat Option
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -202,13 +200,12 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
                       style: TextStyle(color: appTheme.background),
                       underline: const SizedBox(),
                       items: ['Never', 'Daily', 'Weekly']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                          .map((e) => DropdownMenuItem(value: e.toLowerCase(), child: Text(e)))
                           .toList(),
                       onChanged: (val) {
                         setState(() {
                           _repeatOption = val!;
-                          _isRecurring = val != 'Never';
-                          if (!_isRecurring) {
+                          if (_repeatOption == 'never') {
                             _selectedWeekdays.clear();
                           }
                         });
@@ -220,7 +217,7 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
               const SizedBox(height: 16),
 
               // Weekday Selection (only if weekly)
-              if (_repeatOption == 'Weekly') ...[
+              if (_repeatOption == 'weekly') ...[
                 const SizedBox(height: 8),
                 const Smalltextgradient(
                   text: 'Select Days:',
@@ -251,7 +248,7 @@ class _TimerpromptdialogState extends ConsumerState<Timerpromptdialog> {
               ],
 
               // Date Selection (only if not recurring)
-              if (_repeatOption == 'Never') ...[
+              if (_repeatOption == 'never') ...[
                 Row(
                   children: [
                     Expanded(

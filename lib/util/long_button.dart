@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
-import 'package:to_do_list/util/visiblegradienttext.dart';
 
-class Buttonstyl extends ConsumerWidget {
-  const Buttonstyl({
+class LongButton extends ConsumerWidget {
+  const LongButton({
     super.key,
     required this.savetext,
     required this.onPressed,
@@ -20,30 +19,21 @@ class Buttonstyl extends ConsumerWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            appTheme.background,
-            appTheme.backgroundGradientEnd,
+            appTheme.actionGradientStart,
+            appTheme.actionGradientEnd
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          width: 2,
-          color: appTheme.actionGradientStart,
-        ),
       ),
       child: ElevatedButton(
         style: appTheme.elevatedButtonTheme.style,
         onPressed: onPressed,
         child: Center(
-          child: ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [
-                appTheme.visibleTextGradientStart,
-                appTheme.visibleTextGradientEnd,
-              ],
-            ).createShader(bounds),
-            child: VisibleGradientText(
-              text:savetext,
-              fontsize: 14,
+          child: Text(
+            savetext,
+            style: TextStyle(
+              color: appTheme.foreground,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),

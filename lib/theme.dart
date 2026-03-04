@@ -14,11 +14,15 @@ class AppThemeState {
   final Color actionGradientEnd;
   final Color textGradientStart;
   final Color textGradientEnd;
+  final Color visibleTextGradientStart;
+  final Color visibleTextGradientEnd;
   final Color accentGradientStart;
   final Color accentGradientEnd;
   final Color backgroundGradientStart;
   final Color backgroundGradientEnd;
   final bool isDarkMode; // Added to track dark mode
+  final ToggleButtonsThemeData toggleButtonsTheme;
+  final ElevatedButtonThemeData elevatedButtonTheme;
 
   AppThemeState({
     required this.primary,
@@ -31,10 +35,14 @@ class AppThemeState {
     required this.actionGradientEnd,
     required this.textGradientStart,
     required this.textGradientEnd,
+    required this.visibleTextGradientStart,
+    required this.visibleTextGradientEnd,
     required this.accentGradientStart,
     required this.accentGradientEnd,
     required this.backgroundGradientStart,
     required this.backgroundGradientEnd,
+    required this.toggleButtonsTheme,
+    required this.elevatedButtonTheme,
     this.isDarkMode = false,
   });
 
@@ -50,12 +58,33 @@ class AppThemeState {
       actionGradientStart: Colors.purple,
       actionGradientEnd: Colors.lightBlueAccent,
       textGradientStart: Colors.purple,
-      textGradientEnd: Color.fromARGB(255, 0, 122, 134),
+      textGradientEnd: const Color.fromARGB(255, 0, 122, 134),
+      visibleTextGradientStart: Colors.deepOrange,
+      visibleTextGradientEnd: Colors.deepPurpleAccent,
       accentGradientStart: Colors.blueGrey,
       accentGradientEnd: Colors.purple,
       backgroundGradientStart: Colors.cyanAccent,
       backgroundGradientEnd: Colors.blueGrey,
       isDarkMode: false,
+      toggleButtonsTheme: ToggleButtonsThemeData(
+        color: Colors.purple,
+        selectedColor: Colors.purple,
+        fillColor: Colors.cyanAccent.withOpacity(0.2),
+        borderColor: Colors.purple,
+        selectedBorderColor: Colors.purple,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: MaterialStateProperty.all(Colors.transparent),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 2)),
+          elevation: MaterialStateProperty.all(0),
+        ),
+      ),
     );
   }
 
@@ -72,11 +101,32 @@ class AppThemeState {
       actionGradientEnd: Colors.purpleAccent,
       textGradientStart: Colors.purpleAccent,
       textGradientEnd: Colors.teal,
+      visibleTextGradientStart: Colors.orange,
+      visibleTextGradientEnd: Colors.yellowAccent,
       accentGradientStart: Colors.purpleAccent,
       accentGradientEnd: Colors.tealAccent,
       backgroundGradientStart: Colors.purple,
       backgroundGradientEnd: Colors.blue,
       isDarkMode: true,
+      toggleButtonsTheme: ToggleButtonsThemeData(
+        color: Colors.purpleAccent,
+        selectedColor: Colors.tealAccent,
+        fillColor: Colors.pink.withOpacity(0.2),
+        borderColor: Colors.purpleAccent,
+        selectedBorderColor: Colors.tealAccent,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: MaterialStateProperty.all(Colors.transparent),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 2)),
+          elevation: MaterialStateProperty.all(0),
+        ),
+      ),
     );
   }
 }

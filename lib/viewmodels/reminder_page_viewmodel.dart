@@ -225,35 +225,7 @@ class ReminderPageViewModel {
       }
       final response = await SupabaseGeminiService.sendChatMessage(user.id, prompt);
       Navigator.of(context).pop(); // Pop loading
-
-      // If this reminder was tied to a TimerPrompt, persist the response there
-      if (notification.payload.startsWith('timer_prompt_')) {
-        final parts = notification.payload.split('_');
-        if (parts.length >= 3) {
-          final promptId = parts[2];
-          try {
-            final timerPromptState = ref.read(timerPromptViewModelProvider);
-            final timerPrompt = timerPromptState.prompts.firstWhere((p) => p.id == promptId);
-            final timestamp = DateFormat('MMM dd, HH:mm').format(DateTime.now());
-            final newEntry = "[$timestamp] $response";
-            final updated = TimerPrompt(
-              id: timerPrompt.id,
-              prompt: timerPrompt.prompt,
-              scheduledTime: timerPrompt.scheduledTime,
-              isRecurring: timerPrompt.isRecurring,
-              weekdays: timerPrompt.weekdays,
-              response: timerPrompt.response != null && timerPrompt.response!.isNotEmpty ? "$newEntry\n\n${timerPrompt.response}" : newEntry,
-              userId: timerPrompt.userId,
-              createdAt: timerPrompt.createdAt,
-              updatedAt: DateTime.now(),
-            );
-            await ref.read(timerPromptViewModelProvider.notifier).savePrompt(updated);
-          } catch (e) {
-            // ignore if timer prompt not found
-          }
-        }
-      }
-
+      
       // Show the AI response and allow removing the reminder
       await showDialog(
         context: context,

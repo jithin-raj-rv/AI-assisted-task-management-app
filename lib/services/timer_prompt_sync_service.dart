@@ -37,8 +37,8 @@ class TimerPromptSyncService {
         id: p['id'],
         prompt: p['prompt'],
         scheduledTime: p['scheduled_time'] != null ? DateTime.parse(p['scheduled_time']) : DateTime.now(),
-        isRecurring: p['is_recurring'] ?? false,
         weekdays: p['weekdays'] != null ? (p['weekdays'] as List<dynamic>).cast<int>() : null,
+        recurringType: p['recurring_type'],
         response: p['response'],
         sent: p['sent'] ?? false,
         userId: p['user_id'],
@@ -84,15 +84,15 @@ class TimerPromptSyncService {
           if (payload.eventType.name == 'insert' || payload.eventType.name == 'update') {
             final record = payload.newRecord!;
             print('[TimerPromptSync] Processing ${payload.eventType} for timer prompt id: ${record['id']}');
-            print('[TimerPromptSync] Record fields: id=${record['id']}, prompt=${record['prompt']}, scheduled_time=${record['scheduled_time']}, is_recurring=${record['is_recurring']}, weekdays=${record['weekdays']}, response=${record['response']}, sent=${record['sent']}, user_id=${record['user_id']}');
+            print('[TimerPromptSync] Record fields: id=${record['id']}, prompt=${record['prompt']}, scheduled_time=${record['scheduled_time']}, recurring_type=${record['recurring_type']}, weekdays=${record['weekdays']}, response=${record['response']}, sent=${record['sent']}, user_id=${record['user_id']}');
             final prompt = TimerPrompt(
               id: record['id'],
               prompt: record['prompt'],
               scheduledTime: record['scheduled_time'] != null ? DateTime.parse(record['scheduled_time']) : DateTime.now(),
-              isRecurring: record['is_recurring'] ?? false,
-              weekdays: record['weekdays'] != null ? (record['weekdays'] as List<dynamic>).cast<int>() : null,
-              response: record['response'],
-              sent: record['sent'] ?? false,
+            weekdays: record['weekdays'] != null ? (record['weekdays'] as List<dynamic>).cast<int>() : null,
+            recurringType: record['recurring_type'],
+            response: record['response'],
+            sent: record['sent'] ?? false,
               userId: record['user_id'],
               createdAt: record['created_at'] != null ? DateTime.parse(record['created_at']) : null,
               updatedAt: record['updated_at'] != null ? DateTime.parse(record['updated_at']) : null,
@@ -128,18 +128,16 @@ class TimerPromptSyncService {
     }
 
     final supabaseData = {
-      'id': prompt.id,
       'user_id': currentUser.id,
       'prompt': prompt.prompt,
       'scheduled_time': prompt.scheduledTime.toUtc().toIso8601String(),
-      'is_recurring': prompt.isRecurring,
       'weekdays': prompt.weekdays,
+      'recurring_type': prompt.recurringType,
       'response': prompt.response,
       'sent': prompt.sent,
     };
 
     await _supabase.from('timer_prompts').insert(supabaseData);
-    await _cache.put(prompt.id, prompt);
   }
 
   /// Update timer prompt
@@ -151,8 +149,8 @@ class TimerPromptSyncService {
     final supabaseData = {
       'prompt': prompt.prompt,
       'scheduled_time': prompt.scheduledTime.toUtc().toIso8601String(),
-      'is_recurring': prompt.isRecurring,
       'weekdays': prompt.weekdays,
+      'recurring_type': prompt.recurringType,
       'response': prompt.response,
       'sent': prompt.sent,
       'updated_at': DateTime.now().toIso8601String(),

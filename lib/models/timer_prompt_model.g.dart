@@ -20,13 +20,13 @@ class TimerPromptAdapter extends TypeAdapter<TimerPrompt> {
       prompt: fields[0] as String,
       scheduledTime: fields[1] as DateTime,
       response: fields[2] as String?,
-      isRecurring: fields[3] as bool,
-      weekdays: (fields[4] as List?)?.cast<int>(),
-      id: fields[5] as String,
-      sent: fields[6] as bool,
-      userId: fields[7] as String?,
-      createdAt: fields[8] as DateTime?,
-      updatedAt: fields[9] as DateTime?,
+      weekdays: (fields[3] as List?)?.cast<int>(),
+      recurringType: fields[5] as String?,
+      id: fields[6] as String,
+      sent: fields[7] as bool,
+      userId: fields[8] as String?,
+      createdAt: fields[9] as DateTime?,
+      updatedAt: fields[10] as DateTime?,
     );
   }
 
@@ -41,18 +41,18 @@ class TimerPromptAdapter extends TypeAdapter<TimerPrompt> {
       ..writeByte(2)
       ..write(obj.response)
       ..writeByte(3)
-      ..write(obj.isRecurring)
-      ..writeByte(4)
       ..write(obj.weekdays)
       ..writeByte(5)
-      ..write(obj.id)
+      ..write(obj.recurringType)
       ..writeByte(6)
-      ..write(obj.sent)
+      ..write(obj.id)
       ..writeByte(7)
-      ..write(obj.userId)
+      ..write(obj.sent)
       ..writeByte(8)
-      ..write(obj.createdAt)
+      ..write(obj.userId)
       ..writeByte(9)
+      ..write(obj.createdAt)
+      ..writeByte(10)
       ..write(obj.updatedAt);
   }
 

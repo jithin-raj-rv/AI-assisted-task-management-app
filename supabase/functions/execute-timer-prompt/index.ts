@@ -254,40 +254,59 @@ serve(async (req) => {
     let userSystemPrompt = '';
     if (systemPromptsRes.data && systemPromptsRes.data.length > 0) {
       const userPrompt = systemPromptsRes.data[0];
-      userSystemPrompt = userPrompt.system_chat_prompt || '';
+      userSystemPrompt = userPrompt.system_timer_prompt || '';
     } else {
       console.log(`[execute-timer-prompt] No custom system prompt found for user: ${userId}, using default, prompt: ${userSystemPrompt}`);
     }
 
-    // Initialize Gemini
+    // Initialize Gemini (we'll attach systemInstruction here to avoid errors below)
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') || '')
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+    // We'll create the model instance with the system instruction up front
+    // (this mirrors the pattern used in process-prompt and avoids passing it when starting a chat,
+    // which can trigger an `Invalid value at 'system_instruction'` error from the API).
+
+    // Before we build the model we want to make sure the prompt isn't excessively long.
+    // Provide lightweight summaries of each list so we don't exceed service limits.
+    const summarizeNames = (items: any[], nameField: string) => {
+      if (!items || items.length === 0) return '[]'
+      const names = items.map(i => i[nameField]).filter(Boolean)
+      return JSON.stringify(names)
+    }
+
+    const todoSummary = summarizeNames(todolist, 'task_name')
+    const goalsSummary = summarizeNames(goals, 'title')
+    const goalStepsSummary = summarizeNames(goalSteps, 'step_text')
+    const remindersSummary = summarizeNames(reminders, 'title')
+    const timerPromptsSummary = summarizeNames(timerPrompts, 'prompt')
+    const feedbackSummary = summarizeNames(feedback, 'feedback')
+    const personalitySummary = summarizeNames(personalityTraits, 'trait')
+    const additionalInfoSummary = summarizeNames(additionalInfo, 'info')
+
+    // rebuild system prompt using the summaries
+    let systemPrompt = ` ${userSystemPrompt}
+You have access to User todolist: ${todoSummary}
+User goals: ${goalsSummary}
+User goal steps: ${goalStepsSummary}
+User reminders: ${remindersSummary}
+User timer prompts: ${timerPromptsSummary}
+User feedback: ${feedbackSummary}
+User personality traits: ${personalitySummary}
+User additional info: ${additionalInfoSummary}
+
+`
+
+    // trim if too long just in case
+    if (systemPrompt.length > 8000) {
+      systemPrompt = systemPrompt.slice(0, 8000) + '\n...<truncated>'
+    }
+
+    // remove any unprintable/control characters that might upset the API
+    systemPrompt = systemPrompt.replace(/[\u0000-\u001F\u007F]/g, ' ')
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', systemInstruction: systemPrompt })
 
     // Define tools (same as process-prompt)
-    const themeTool = {
-      functionDeclarations: [{
-        name: 'updateAppColors',
-        description: 'Updates the app theme colors based on user preferences.',
-        parameters: {
-          type: 'object',
-          properties: {
-            primaryHex: { type: 'string', description: 'Hex code for the primary color' },
-            backgroundHex: { type: 'string', description: 'Hex code for the background color' },
-            secondaryHex: { type: 'string', description: 'Hex code for the secondary color' },
-            tertiaryHex: { type: 'string', description: 'Hex code for the tertiary color' },
-            primaryGradient1Hex: { type: 'string', description: 'Hex code for the first primary gradient color' },
-            primaryGradient2Hex: { type: 'string', description: 'Hex code for the second primary gradient color' },
-            secondaryGradient1Hex: { type: 'string', description: 'Hex code for the first secondary gradient color' },
-            secondaryGradient2Hex: { type: 'string', description: 'Hex code for the second secondary gradient color' },
-            tertiaryGradient1Hex: { type: 'string', description: 'Hex code for the first tertiary gradient color' },
-            tertiaryGradient2Hex: { type: 'string', description: 'Hex code for the second tertiary gradient color' },
-            backgroundGradient1Hex: { type: 'string', description: 'Hex code for the first background gradient color' },
-            backgroundGradient2Hex: { type: 'string', description: 'Hex code for the second background gradient color' }
-          },
-          required: ['primaryHex', 'backgroundHex', 'secondaryHex', 'tertiaryHex', 'primaryGradient1Hex', 'primaryGradient2Hex', 'secondaryGradient1Hex', 'secondaryGradient2Hex', 'tertiaryGradient1Hex', 'tertiaryGradient2Hex', 'backgroundGradient1Hex', 'backgroundGradient2Hex']
-        }
-      }]
-    }
 
     const todoTool = {
       functionDeclarations: [{
@@ -384,7 +403,7 @@ serve(async (req) => {
           properties: {
             prompt: { type: 'string', description: 'The prompt text.' },
             scheduledTime: { type: 'string', description: 'Scheduled time in ISO format.' },
-            isRecurring: { type: 'boolean', description: 'Whether it recurs.' },
+            recurring_type: { type: 'string', description: 'Recurring type can be never, daily, or weekly.' },
             weekdays: { type: 'array', items: { type: 'number' }, description: 'Array of weekday numbers.' },
             response: { type: 'string', description: 'The response text.' },
             sent: { type: 'boolean', description: 'Whether it has been sent.' }
@@ -410,7 +429,7 @@ serve(async (req) => {
             promptId: { type: 'string', description: 'The ID of the prompt to modify.' },
             newPrompt: { type: 'string', description: 'The updated prompt.' },
             newScheduledTime: { type: 'string' },
-            newIsRecurring: { type: 'boolean' },
+            newRecurringType: { type: 'string', description: 'Recurring type can be never, daily, or weekly.' },
             newWeekdays: { type: 'array', items: { type: 'number' } },
             newResponse: { type: 'string' },
             newSent: { type: 'boolean' }
@@ -621,72 +640,10 @@ serve(async (req) => {
       responseMimeType: 'text/plain',
     }
 
-    // Create system prompt for systemInstruction
-    const systemPrompt = ` ${userSystemPrompt}
-You have access to User todolist: ${JSON.stringify(todolist)}
-User goals: ${JSON.stringify(goals)}
-User goal steps: ${JSON.stringify(goalSteps)}
-User reminders: ${JSON.stringify(reminders)}
-User timer prompts: ${JSON.stringify(timerPrompts)}
-User feedback: ${JSON.stringify(feedback)}
-User personality traits: ${JSON.stringify(personalityTraits)}
-User additional info: ${JSON.stringify(additionalInfo)}
-
-You are a professional Personal manager. When a user mentions colors, call updateAppColors.
-For todos: use addTodo, deleteTodo, modifyTodo.
-For goals: addGoal, deleteGoal, modifyGoal.
-For goal steps: addGoalStep, deleteGoalStep, modifyGoalStep., use goals, goal steps to help user define their long term goals, and the journey to complete the goal
-For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt.
-For feedback: use addFeedback, deleteFeedback, modifyFeedback., use this to access user feedback and remove unwanted feedback after using them.
-For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait.
-For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo.
-For reminders: use addReminder, deleteReminder, modifyReminder.
-
-
-Help the user figure out of how to achieve goals if they are confused.
-Collect user info and store in personality, additional info as necessary.
-when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
-When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.
-You are very good at storing and retrieving user info in additional info. if goal is not clear, you add additional info to ask the user for more info. and delete it once everything is clear 
-You are very good at storing information to understand the user.
-
-
-You are a highly proactive, empathetic, and organized Professional Personal Manager. Your goal is to architect the user's life by translating high-level goals into actionable daily success.
-
-### CRITICAL: UNDERSTANDING IMPORTANCE vs URGENCY:
-- **IMPORTANCE**: How valuable/meaningful the task is. A task that matters for achieving goals. Use "IMPORTANT" if the task contributes significantly to user's goals, health, finances, or personal growth.
-- **URGENCY**: How time-sensitive the task is. A task that requires immediate attention. Use "URGENT" if the task has a deadline, is time-bound, or needs to be done NOW.
-
-IMPORTANT ≠ URGENT! A task can be:
-- Important but NOT Urgent: Exercise, long-term planning, preventive healthcare
-- Urgent but NOT Important: Someone else's emergency, interruptions
-- Both Important AND Urgent: Deadline today, medical emergency
-- Neither: Trivial tasks, time-wasters
-
-When adding todos, ALWAYS consider both dimensions separately!
-
-### CORE OPERATING PRINCIPLES:
-1. **Strategic Translation**: Automatically break down 'Goals' into 'Goal Steps', then translate those into daily 'Todos'.
-2. **Reminders from Todos**: You are responsible for analyzing the daily 'Todos' and calling 'addReminder' for each. Determine the best time based on 'Personality Traits' and 'Additional Info'.
-3. **The Feedback Loop**: Use 'Feedback' from past reminders to adjust 'Timer Prompts'. If a user skips a task, use 'ModifyReminder' to reschedule and 'AddAdditionalInfo' to note the reason.
-4. **Data Hygiene**: Delete 'Feedback' once analyzed and delete temporary 'Additional Info' notes once a goal is clarified.
-
-### TOOL LOGIC:
-- **Todos & Reminders**: Use 'addTodo' for the task and 'addReminder' to ensure the user is nudged.
-- **Timer Prompts**: Schedule AI-driven prompts to check on goal progress and update 'Todos' based on the response.
-- **Visual Aesthetic**: Call 'updateAppColors' when the user mentions mood or color.
-
-### BEHAVIORAL NOTE:
-When the user asks about their day, say: "I've analyzed your goal [Goal Name]. Based on your preference for [Personality Trait], I've scheduled [Todo] and set a reminder for [Time]."
-
-Process this timer prompt automatically and execute the appropriate actions.
-`
-
     const chat = model.startChat({
       generationConfig,
       history: [],
-      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool],
-      systemInstruction: systemPrompt
+      tools: [todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
     })
 
     const result = await chat.sendMessage([
@@ -768,7 +725,7 @@ Process this timer prompt automatically and execute the appropriate actions.
             prompt: args.prompt || 'No prompt',
             response: args.response || '',
             scheduled_time: formatTimestamp(args.scheduledTime),
-            is_recurring: args.isRecurring || false,
+            recurring_type: args.recurring_type,
             weekdays: args.weekdays || [],
             sent: args.sent || false
           })
@@ -785,7 +742,7 @@ Process this timer prompt automatically and execute the appropriate actions.
             prompt: args.newPrompt,
             response: args.newResponse,
             scheduled_time: formatTimestamp(args.newScheduledTime),
-            is_recurring: args.newIsRecurring,
+            recurring_type: args.newRecurringType,
             weekdays: args.newWeekdays,
             sent: args.newSent
           }).eq('id', args.promptId).eq('user_id', userId)
@@ -838,10 +795,6 @@ Process this timer prompt automatically and execute the appropriate actions.
           }).eq('id', args.stepId).eq('user_id', userId)
           if (modifyStepError) throw modifyStepError
           responseText += `Modified goal step: ${args.newTitle}\n`
-          break
-        case 'updateAppColors':
-          // Handle theme update - this might not be stored in DB, but could be handled separately
-          responseText += `Updated app colors\n`
           break
         case 'addPersonalityTrait':
           const { error: addTraitError } = await supabaseClient.from('personality_traits').insert({
@@ -934,18 +887,6 @@ Process this timer prompt automatically and execute the appropriate actions.
       .eq('id', timerPromptId)
 
     if (updateError) throw updateError
-
-    // If this is a recurring timer prompt, reschedule for next occurrence
-    if (timerPrompt.is_recurring) {
-      const { error: rescheduleError } = await supabaseClient.rpc('reschedule_recurring_timer_prompt', {
-        timer_prompt_id: timerPromptId
-      })
-
-      if (rescheduleError) {
-        console.error('Failed to reschedule recurring timer prompt:', rescheduleError)
-        // Don't throw error here as the main execution was successful
-      }
-    }
 
     return new Response(
       JSON.stringify({ success: true, response: responseText || response.text() }),

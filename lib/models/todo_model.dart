@@ -93,27 +93,6 @@ class Todo {
     );
   }
 
-  // Constructor to create a Todo from the existing List<dynamic> format
-  factory Todo.fromHiveList(List<dynamic> data) {
-    return Todo(
-      taskName: data[0] as String? ?? '',
-      isCompleted: data[1] as bool? ?? false,
-      importance: data[2] as String? ?? 'NOT IMPORTANT',
-      urgency: data[3] as String? ?? 'NOT URGENT',
-      description: data[4] as String? ?? '',
-      dueDate: data[5] as DateTime? ?? DateTime.now(),
-      userId: data.length > 6 ? data[6] as String? : null,
-      createdAt: data.length > 7 ? data[7] as DateTime? : null,
-      updatedAt: data.length > 8 ? data[8] as DateTime? : null,
-      isSynced: data.length > 9 ? data[9] as bool? ?? false : false,
-      lastSyncAttempt: data.length > 10 ? data[10] as DateTime? : null,
-    );
-  }
-
-  // Method to convert a Todo object back to the List<dynamic> format for Hive storage
-  List<dynamic> toHiveList() {
-    return [taskName, isCompleted, importance, urgency, description, dueDate, userId, createdAt, updatedAt, isSynced, lastSyncAttempt];
-  }
 
   @override
   String toString() {
