@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/util/mediumgradienttext.dart';
 import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
-import 'package:to_do_list/providers.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 import 'package:to_do_list/util/todotile.dart';

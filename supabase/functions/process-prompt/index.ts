@@ -229,7 +229,7 @@ serve(async (req) => {
     })
 
     // Fetch user data
-    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes, remindersRes] = await Promise.all([
+    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes, remindersRes, systemPromptsRes] = await Promise.all([
       supabaseClient.from('todos').select('*').eq('user_id', userId),
       supabaseClient.from('goals').select('*').eq('user_id', userId),
       supabaseClient.from('goal_steps').select('*').eq('user_id', userId),
@@ -237,10 +237,11 @@ serve(async (req) => {
       supabaseClient.from('user_feedback').select('*').eq('user_id', userId),
       supabaseClient.from('personality_traits').select('*').eq('user_id', userId),
       supabaseClient.from('additional_info').select('*').eq('user_id', userId),
-      supabaseClient.from('reminders').select('*').eq('user_id', userId)
+      supabaseClient.from('reminders').select('*').eq('user_id', userId),
+      supabaseClient.from('system_prompts').select('*').eq('user_id', userId)
     ])
 
-    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error || remindersRes.error) {
+    if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error || remindersRes.error || systemPromptsRes.error) {
       throw new Error('Failed to fetch user data')
     }
 
@@ -266,8 +267,17 @@ serve(async (req) => {
       scheduled_date: formatTimestampForAI(item.scheduled_date)
     }))
 
+    // Get user's custom system prompt from database, or use default
+    let userSystemPrompt = '';
+    if (systemPromptsRes.data && systemPromptsRes.data.length > 0) {
+      const userPrompt = systemPromptsRes.data[0];
+      userSystemPrompt = userPrompt.system_chat_prompt || '';
+    } else {
+      console.log(`[process-prompt] No custom system prompt found for user: ${userId}, using default, prompt: ${userSystemPrompt}`);
+    }
+
     // Create system prompt for systemInstruction
-    const systemPrompt =`
+    const systemPrompt = ` ${userSystemPrompt}
 You have access to User todolist: ${JSON.stringify(todolist)}
 User goals: ${JSON.stringify(goals)}
 User goal steps: ${JSON.stringify(goalSteps)}
@@ -276,51 +286,6 @@ User timer prompts: ${JSON.stringify(timerPrompts)}
 User feedback: ${JSON.stringify(feedback)}
 User personality traits: ${JSON.stringify(personalityTraits)}
 User additional info: ${JSON.stringify(additionalInfo)}
-
-For todos: use addTodo, deleteTodo, modifyTodo., use this only to manage daily todos for the user, analysing the user goals and steps
-For goals: addGoal, deleteGoal, modifyGoal.
-For goal steps: addGoalStep, deleteGoalStep, modifyGoalStep., use goals,goal steps to help user define their long term goals, and the journey to complete the goal
-For timer prompts: addTimerPrompt, deleteTimerPrompt, modifyTimerPrompt., use this to send scheduled ai prompts to update todos based on goals,goal steps,and it's importance
-For feedback: addFeedback,deleteFeedback,modifyFeedback., use this to access user feedback and remove unwanted feedback after using them.
-For personality traits: use addPersonalityTrait, deletePersonalityTrait, modifyPersonalityTrait., use this to constantly know the user and update about their personality to better help them manage their tasks.
-For additional info: use addAdditionalInfo, deleteAdditionalInfo, modifyAdditionalInfo., use this for any other additional information about the user for better scheduling to be in additional info.
-For reminders: use addReminder, deleteReminder, modifyReminder., use this to schedule reminders to user, to get user feedback, which is stored in feedback, to start conversation with ai from reminders.
-
-Help the user figure out of how to achieve goals if they are confused.
-Collect user info and store in personality, additional info as necessary.
-when user asks to update their todos for the day aknowledge user personality, additional info,feedback and alter goals->goal-steps->daily tasks as user completes or descides to skip them then shedule reminders for the day.
-When the user doesn't have any meaningfull goal, help them define the goal, steps, and update their todos and reminders accordingly.
-You are very good at storing and retrieving user info in additional info. if goal is not clear, you add additional info to ask the user for more info. and delete it once everything is clear 
-You are very good at storing information to understand the user.
-
-
-You are a highly proactive, empathetic, and organized Professional Personal Manager. Your goal is to architect the user's life by translating high-level goals into actionable daily success.
-
-### CRITICAL: UNDERSTANDING IMPORTANCE vs URGENCY:
-- **IMPORTANCE**: How valuable/meaningful the task is. A task that matters for achieving goals. Use "IMPORTANT" if the task contributes significantly to user's goals, health, finances, or personal growth.
-- **URGENCY**: How time-sensitive the task is. A task that requires immediate attention. Use "URGENT" if the task has a deadline, is time-bound, or needs to be done NOW.
-
-IMPORTANT ≠ URGENT! A task can be:
-- Important but NOT Urgent: Exercise, long-term planning, preventive healthcare
-- Urgent but NOT Important: Someone else's emergency, interruptions
-- Both Important AND Urgent: Deadline today, medical emergency
-- Neither: Trivial tasks, time-wasters
-
-When adding todos, ALWAYS consider both dimensions separately!
-
-### CORE OPERATING PRINCIPLES:
-1. **Strategic Translation**: Automatically break down 'Goals' into 'Goal Steps', then translate those into daily 'Todos'.
-2. **Reminders from Todos**: You are responsible for analyzing the daily 'Todos' and calling 'addReminder' for each. Determine the best time based on 'Personality Traits' and 'Additional Info'.
-3. **The Feedback Loop**: Use 'Feedback' from past reminders to adjust 'Timer Prompts'. If a user skips a task, use 'ModifyReminder' to reschedule and 'AddAdditionalInfo' to note the reason.
-4. **Data Hygiene**: Delete 'Feedback' once analyzed and delete temporary 'Additional Info' notes once a goal is clarified.
-
-### TOOL LOGIC:
-- **Todos & Reminders**: Use 'addTodo' for the task and 'addReminder' to ensure the user is nudged.
-- **Timer Prompts**: Schedule AI-driven prompts to check on goal progress and update 'Todos' based on the response.
-- **Visual Aesthetic**: Call 'updateAppColors' when the user mentions mood or color.
-
-### BEHAVIORAL NOTE:
-When the user asks about their day, say: "I've analyzed your goal [Goal Name]. Based on your preference for [Personality Trait], I've scheduled [Todo] and set a reminder for [Time]."
 
 `
     // Build conversation history (only user/model messages, no system messages)
@@ -953,8 +918,12 @@ When the user asks about their day, say: "I've analyzed your goal [Goal Name]. B
       }
     }
 
+    // Only return function call responses if there were function calls
+    // Otherwise return the regular AI response text
+    const finalResponse = functionCalls.length > 0 ? responseText : response.text()
+
     return new Response(
-      JSON.stringify({ response: responseText || response.text() }),
+      JSON.stringify({ response: finalResponse }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

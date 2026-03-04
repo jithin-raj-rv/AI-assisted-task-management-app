@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/models/todo_model.dart';
 import 'package:to_do_list/models/todo_category_model.dart';
 import 'package:to_do_list/viewmodels/todo_viewmodel.dart';
-import 'package:to_do_list/providers.dart';
 
 int getCategoryScore(TodoCategory category) {
   if (category.importance == 'IMPORTANT' && category.urgency == 'URGENT') {

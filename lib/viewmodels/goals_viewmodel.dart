@@ -5,7 +5,6 @@ import 'package:to_do_list/cache/goal_cache.dart';
 import 'package:to_do_list/cache/goal_step_cache.dart';
 import 'package:to_do_list/sync_providers.dart';
 import 'package:to_do_list/services/goal_sync_service.dart';
-import 'package:to_do_list/services/goal_step_sync_service.dart';
 import 'package:uuid/uuid.dart';
 
 class GoalsPageState {

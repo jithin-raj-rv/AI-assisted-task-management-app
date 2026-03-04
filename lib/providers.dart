@@ -6,7 +6,6 @@ import 'package:to_do_list/viewmodels/reminder_page_viewmodel.dart';
 import 'package:to_do_list/viewmodels/settings_viewmodel.dart';
 import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
-import 'package:to_do_list/viewmodels/system_prompt_viewmodel.dart';
 import 'package:to_do_list/services/auth_service.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
 

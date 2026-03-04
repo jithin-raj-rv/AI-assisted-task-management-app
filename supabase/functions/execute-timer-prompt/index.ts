@@ -212,7 +212,7 @@ serve(async (req) => {
     const userId = timerPrompt.user_id
 
     // Fetch user data
-    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes, remindersRes] = await Promise.all([
+    const [todosRes, goalsRes, goalStepsRes, timerPromptsRes, feedbackRes, personalityRes, additionalInfoRes, remindersRes, systemPromptsRes] = await Promise.all([
       supabaseClient.from('todos').select('*').eq('user_id', userId),
       supabaseClient.from('goals').select('*').eq('user_id', userId),
       supabaseClient.from('goal_steps').select('*').eq('user_id', userId),
@@ -220,7 +220,8 @@ serve(async (req) => {
       supabaseClient.from('user_feedback').select('*').eq('user_id', userId),
       supabaseClient.from('personality_traits').select('*').eq('user_id', userId),
       supabaseClient.from('additional_info').select('*').eq('user_id', userId),
-      supabaseClient.from('reminders').select('*').eq('user_id', userId)
+      supabaseClient.from('reminders').select('*').eq('user_id', userId),
+      supabaseClient.from('system_prompts').select('*').eq('user_id', userId)
     ])
 
     if (todosRes.error || goalsRes.error || goalStepsRes.error || timerPromptsRes.error || feedbackRes.error || personalityRes.error || additionalInfoRes.error || remindersRes.error) {
@@ -248,6 +249,15 @@ serve(async (req) => {
       ...item,
       scheduled_date: formatTimestampForAI(item.scheduled_date)
     }))
+
+    // Get user's custom system prompt from database, or use default
+    let userSystemPrompt = '';
+    if (systemPromptsRes.data && systemPromptsRes.data.length > 0) {
+      const userPrompt = systemPromptsRes.data[0];
+      userSystemPrompt = userPrompt.system_chat_prompt || '';
+    } else {
+      console.log(`[execute-timer-prompt] No custom system prompt found for user: ${userId}, using default, prompt: ${userSystemPrompt}`);
+    }
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') || '')
@@ -611,16 +621,8 @@ serve(async (req) => {
       responseMimeType: 'text/plain',
     }
 
-    const chat = model.startChat({
-      generationConfig,
-      history: [],
-      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool]
-    })
-
-    const result = await chat.sendMessage([
-      {
-        text: `
-        
+    // Create system prompt for systemInstruction
+    const systemPrompt = ` ${userSystemPrompt}
 You have access to User todolist: ${JSON.stringify(todolist)}
 User goals: ${JSON.stringify(goals)}
 User goal steps: ${JSON.stringify(goalSteps)}
@@ -677,10 +679,17 @@ When adding todos, ALWAYS consider both dimensions separately!
 ### BEHAVIORAL NOTE:
 When the user asks about their day, say: "I've analyzed your goal [Goal Name]. Based on your preference for [Personality Trait], I've scheduled [Todo] and set a reminder for [Time]."
 
+Process this timer prompt automatically and execute the appropriate actions.
+`
 
+    const chat = model.startChat({
+      generationConfig,
+      history: [],
+      tools: [themeTool, todoTool, goalTool, goalStepTool, timerPromptTool, feedbackTool, personalityTool, additionalInfoTool, reminderTool],
+      systemInstruction: systemPrompt
+    })
 
-Process this timer prompt automatically and execute the appropriate actions.`
-      },
+    const result = await chat.sendMessage([
       {
         text: timerPrompt.prompt
       }

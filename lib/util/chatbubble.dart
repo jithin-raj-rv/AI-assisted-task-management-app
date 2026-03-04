@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/util/smalltextgradient.dart';
+
+/// Helper function to copy text to clipboard with feedback
+Future<void> _copyToClipboard(BuildContext context, String text) async {
+  await Clipboard.setData(ClipboardData(text: text));
+  
+  // Show a simple toast-like feedback
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text('Text copied to clipboard'),
+      duration: const Duration(milliseconds: 1500),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
 
 /**
  * A chat bubble container that provides chat-like styling for tiles.
@@ -72,6 +87,7 @@ class ChatMessageBubble extends ConsumerWidget {
   final TextStyle? textStyle;
   final EdgeInsetsGeometry? margin;
   final bool useGradient;
+  final bool enableCopy; // New parameter to enable/disable copying
 
   const ChatMessageBubble({
     super.key,
@@ -80,6 +96,7 @@ class ChatMessageBubble extends ConsumerWidget {
     this.textStyle,
     this.margin,
     this.useGradient = false,
+    this.enableCopy = true, // Default to enabled
   });
 
   @override
@@ -90,11 +107,22 @@ class ChatMessageBubble extends ConsumerWidget {
       isUser: isUser,
       margin: margin,
       useGradient: useGradient,
-      child: Text(
-        text,
-        style: textStyle ?? TextStyle(
-          color: appTheme.foreground.withOpacity(0.65),
-          fontSize: 16,
+      child: GestureDetector(
+        onLongPress: enableCopy 
+          ? () => _copyToClipboard(context, text)
+          : null,
+        child: SelectableText(
+          text,
+          style: textStyle ?? TextStyle(
+            color: appTheme.foreground.withOpacity(0.65),
+            fontSize: 16,
+          ),
+          cursorColor: appTheme.primary,
+          selectionColor: appTheme.primary.withOpacity(0.3),
+          toolbarOptions: const ToolbarOptions(
+            copy: true,
+            selectAll: true,
+          ),
         ),
       ),
     );
@@ -110,6 +138,7 @@ class GradientChatBubble extends ConsumerWidget {
   final double fontSize;
   final TextOverflow overflow;
   final EdgeInsetsGeometry? margin;
+  final bool enableCopy; // New parameter to enable/disable copying
 
   const GradientChatBubble({
     super.key,
@@ -118,6 +147,7 @@ class GradientChatBubble extends ConsumerWidget {
     this.fontSize = 16,
     this.overflow = TextOverflow.clip,
     this.margin,
+    this.enableCopy = true, // Default to enabled
   });
 
   @override
@@ -128,10 +158,33 @@ class GradientChatBubble extends ConsumerWidget {
       isUser: isUser,
       margin: margin,
       useGradient: true,
-      child: Smalltextgradient(
-        text: text,
-        fontsize: fontSize,
-        overflow: overflow,
+      child: GestureDetector(
+        onLongPress: enableCopy 
+          ? () => _copyToClipboard(context, text)
+          : null,
+        child: SelectableText(
+          text,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.normal,
+            foreground: Paint()
+              ..shader = LinearGradient(
+                colors: isUser
+                    ? [appTheme.primary, appTheme.secondary]
+                    : [appTheme.secondary, appTheme.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(
+                const Rect.fromLTWH(0, 0, 200, 100),
+              ),
+          ),
+          cursorColor: appTheme.primary,
+          selectionColor: appTheme.primary.withOpacity(0.3),
+          toolbarOptions: const ToolbarOptions(
+            copy: true,
+            selectAll: true,
+          ),
+        ),
       ),
     );
   }
@@ -146,6 +199,9 @@ class ChatInputField extends ConsumerWidget {
   final VoidCallback? onSubmit;
   final VoidCallback? onSend;
   final bool autofocus;
+  final int maxLines;
+  final double minHeight;
+  final double maxHeight;
 
   const ChatInputField({
     super.key,
@@ -154,6 +210,9 @@ class ChatInputField extends ConsumerWidget {
     this.onSubmit,
     this.onSend,
     this.autofocus = false,
+    this.maxLines = 6,
+    this.minHeight = 48,
+    this.maxHeight = 160,
   });
 
   @override
@@ -192,6 +251,8 @@ class ChatInputField extends ConsumerWidget {
                 child: TextField(
                   controller: controller,
                   autofocus: autofocus,
+                  maxLines: maxLines,
+                  minLines: 1,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: hintText,
@@ -205,6 +266,9 @@ class ChatInputField extends ConsumerWidget {
                     ),
                   ),
                   onSubmitted: (_) => onSubmit?.call(),
+                  // Auto-resize based on content
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
                 ),
               ),
             ),
