@@ -28,12 +28,8 @@ class SupabaseGeminiService {
 
   /// Send a chat message to the Supabase Gemini Edge Function
   /// Returns the AI response as a string
-  static Future<String> sendChatMessage(
-    String userId,
-    String message, {
-    List<Chat>? chatHistory,
-    int maxRetries = 5
-  }) async {
+  static Future<String> sendChatMessage(String userId, String message,
+      {List<Chat>? chatHistory, int maxRetries = 5}) async {
     int attempt = 0;
     int retryDelay = 1000; // Start with 1 second delay
 
@@ -52,10 +48,7 @@ class SupabaseGeminiService {
 
         // Convert chat history to the expected format
         final history = chatHistory?.map((chat) {
-          return {
-            'role': chat.isUser ? 'user' : 'model',
-            'content': chat.text
-          };
+          return {'role': chat.isUser ? 'user' : 'model', 'content': chat.text};
         }).toList();
 
         // Add timeout to prevent hanging
@@ -72,7 +65,7 @@ class SupabaseGeminiService {
 
         if (response.status == 200) {
           final data = response.data as Map<String, dynamic>;
-          return data['response'] as String? ?? 'No response from AI';
+          return data['response']?.toString() ?? 'No response from AI';
         } else if (response.status == 401 && attempt < maxRetries) {
           // Auth error - refresh session and retry
           try {
@@ -83,7 +76,8 @@ class SupabaseGeminiService {
           }
           attempt++;
           await Future.delayed(Duration(milliseconds: retryDelay));
-          retryDelay = min(retryDelay * 2, 15000); // Exponential backoff, max 15s
+          retryDelay =
+              min(retryDelay * 2, 15000); // Exponential backoff, max 15s
           continue;
         } else if (response.status >= 400 && response.status < 600) {
           // Client/Server errors - don't retry these
@@ -103,52 +97,66 @@ class SupabaseGeminiService {
 
         // Check if this is a retryable network error
         final isRetryableError = errorMessage.contains('timeout') ||
-                                errorMessage.contains('connection') ||
-                                errorMessage.contains('network') ||
-                                errorMessage.contains('socket') ||
-                                errorMessage.contains('dns') ||
-                                errorMessage.contains('internet') ||
-                                errorMessage.contains('unreachable') ||
-                                errorMessage.contains('failed host lookup') ||
-                                errorMessage.contains('connection refused') ||
-                                errorMessage.contains('connection reset') ||
-                                errorMessage.contains('connection closed');
+            errorMessage.contains('connection') ||
+            errorMessage.contains('network') ||
+            errorMessage.contains('socket') ||
+            errorMessage.contains('dns') ||
+            errorMessage.contains('internet') ||
+            errorMessage.contains('unreachable') ||
+            errorMessage.contains('failed host lookup') ||
+            errorMessage.contains('connection refused') ||
+            errorMessage.contains('connection reset') ||
+            errorMessage.contains('connection closed');
 
         if (isRetryableError && attempt < maxRetries) {
           // Network error - retry with backoff
-          print('[GeminiService] Retrying network error (attempt ${attempt + 1}/$maxRetries)');
+          print(
+              '[GeminiService] Retrying network error (attempt ${attempt + 1}/$maxRetries)');
           attempt++;
           await Future.delayed(Duration(milliseconds: retryDelay));
-          retryDelay = min(retryDelay * 2, 15000); // Exponential backoff, max 15s
+          retryDelay =
+              min(retryDelay * 2, 15000); // Exponential backoff, max 15s
           continue;
         } else {
           // Non-retryable error or max retries reached
-          if (errorMessage.contains('session') || errorMessage.contains('auth') ||
-              errorMessage.contains('jwt') || errorMessage.contains('unauthorized') ||
-              errorMessage.contains('invalid_token') || errorMessage.contains('token_expired')) {
+          if (errorMessage.contains('session') ||
+              errorMessage.contains('auth') ||
+              errorMessage.contains('jwt') ||
+              errorMessage.contains('unauthorized') ||
+              errorMessage.contains('invalid_token') ||
+              errorMessage.contains('token_expired')) {
             throw Exception('Session expired. Please sign in again.');
           } else if (isRetryableError) {
-            throw Exception('Network connection issue. Please check your internet connection and try again.');
+            throw Exception(
+                'Network connection issue. Please check your internet connection and try again.');
           } else if (errorMessage.contains('timeout')) {
             throw Exception('Request timed out. Please try again.');
-          } else if (errorMessage.contains('server error') || errorMessage.contains('internal server') ||
-                     errorMessage.contains('bad gateway') || errorMessage.contains('service unavailable')) {
-            throw Exception('Server temporarily unavailable. Please try again later.');
-          } else if (errorMessage.contains('json') || errorMessage.contains('parsing') ||
-                     errorMessage.contains('format')) {
+          } else if (errorMessage.contains('server error') ||
+              errorMessage.contains('internal server') ||
+              errorMessage.contains('bad gateway') ||
+              errorMessage.contains('service unavailable')) {
+            throw Exception(
+                'Server temporarily unavailable. Please try again later.');
+          } else if (errorMessage.contains('json') ||
+              errorMessage.contains('parsing') ||
+              errorMessage.contains('format')) {
             throw Exception('Data processing error. Please try again.');
-          } else if (errorMessage.contains('rate limit') || errorMessage.contains('quota')) {
-            throw Exception('Service temporarily busy. Please wait a moment and try again.');
+          } else if (errorMessage.contains('rate limit') ||
+              errorMessage.contains('quota')) {
+            throw Exception(
+                'Service temporarily busy. Please wait a moment and try again.');
           } else {
             // Log unexpected errors for debugging
             print('[GeminiService] Unexpected error: $e');
             // Include error details in the message for debugging
-            throw Exception('An unexpected error occurred: ${e.toString()}. Please try again.');
+            throw Exception(
+                'An unexpected error occurred: ${e.toString()}. Please try again.');
           }
         }
       }
     }
 
-    throw Exception('Network connection issue. Please check your internet connection and try again.');
+    throw Exception(
+        'Network connection issue. Please check your internet connection and try again.');
   }
 }

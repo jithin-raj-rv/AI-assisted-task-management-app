@@ -79,77 +79,58 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
 
   // ---------------- EDIT GOAL ----------------
   void _editGoal(Goal goal) {
-    _goalController.text = goal.title;
-
-    showDialog(
+    showGoalDialog(
       context: context,
-      builder: (_) => Goaldialogbox(
-        controller: _goalController,
-        initialDescription: goal.description,
-        initialTargetDate: goal.targetDate,
-        initialImportance: goal.importance == 'IMPORTANT',
-        initialUrgency: goal.urgency == 'URGENT',
-        onSave: (name, description, dueDate, isCompleted, importance, urgency) {
-          final connectivity = ref.read(connectivityServiceProvider);
-          if (connectivity.currentStatus != ConnectivityStatus.online) {
-            OfflineUtils.showOfflinePopup(context);
-            return;
-          }
-          ref.read(goalsPageViewModelProvider.notifier).updateGoal(
-            goal.id!,
-            Goal(
-              title: name,
-              description: description,
-              targetDate: dueDate ?? goal.targetDate,
-              isCompleted: goal.isCompleted,
-              id: goal.id,
-              userId: goal.userId,
-              createdAt: goal.createdAt,
-              updatedAt: goal.updatedAt,
-              importance: importance,
-              urgency: urgency,
-            ),
-          );
-          _goalController.clear();
-          Navigator.pop(context);
-        },
-        onCancel: () {
-          _goalController.clear();
-          Navigator.pop(context);
-        },
-      ),
+      existingGoalName: goal.title,
+      existingDescription: goal.description,
+      existingTargetDate: goal.targetDate,
+      existingImportance: goal.importance == 'IMPORTANT',
+      existingUrgency: goal.urgency == 'URGENT',
+      onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
+        final connectivity = ref.read(connectivityServiceProvider);
+        if (connectivity.currentStatus != ConnectivityStatus.online) {
+          OfflineUtils.showOfflinePopup(context);
+          return;
+        }
+        ref.read(goalsPageViewModelProvider.notifier).updateGoal(
+          goal.id!,
+          Goal(
+            title: name,
+            description: description,
+            targetDate: dueDate ?? goal.targetDate,
+            isCompleted: goal.isCompleted,
+            id: goal.id,
+            userId: goal.userId,
+            createdAt: goal.createdAt,
+            updatedAt: goal.updatedAt,
+            importance: importance,
+            urgency: urgency,
+          ),
+        );
+      },
     );
   }
 
   // ---------------- ADD GOAL ----------------
   void _addGoal() {
-    showDialog(
+    showGoalDialog(
       context: context,
-      builder: (_) => Goaldialogbox(
-        controller: _goalController,
-        onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
-          final connectivity = ref.read(connectivityServiceProvider);
-          if (connectivity.currentStatus != ConnectivityStatus.online) {
-            OfflineUtils.showOfflinePopup(context);
-            return;
-          }
-          await ref.read(goalsPageViewModelProvider.notifier).addGoal(
-            Goal(
-              title: name,
-              description: description,
-              targetDate: dueDate ?? DateTime.now(),
-              importance: importance,
-              urgency: urgency,
-            ),
-          );
-          _goalController.clear();
-          Navigator.pop(context);
-        },
-        onCancel: () {
-          _goalController.clear();
-          Navigator.pop(context);
-        },
-      ),
+      onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
+        final connectivity = ref.read(connectivityServiceProvider);
+        if (connectivity.currentStatus != ConnectivityStatus.online) {
+          OfflineUtils.showOfflinePopup(context);
+          return;
+        }
+        await ref.read(goalsPageViewModelProvider.notifier).addGoal(
+          Goal(
+            title: name,
+            description: description,
+            targetDate: dueDate ?? DateTime.now(),
+            importance: importance,
+            urgency: urgency,
+          ),
+        );
+      },
     );
   }
 

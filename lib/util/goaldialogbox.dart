@@ -25,7 +25,7 @@ class Goaldialogbox extends ConsumerStatefulWidget {
   final bool initialImportance;
   final bool initialUrgency;
   final VoidCallback onCancel;
-  final Function(
+  final Future<void> Function(
     String name,
     String description,
     DateTime? dueDate,
@@ -36,6 +36,39 @@ class Goaldialogbox extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<Goaldialogbox> createState() => _GoaldialogboxState();
+}
+
+/// Shows the styled goal dialog
+Future<void> showGoalDialog({
+  required BuildContext context,
+  String? existingGoalName,
+  String? existingDescription,
+  DateTime? existingTargetDate,
+  bool existingImportance = false,
+  bool existingUrgency = false,
+  required Future<void> Function(
+    String name,
+    String description,
+    DateTime? dueDate,
+    bool isCompleted,
+    String importance,
+    String urgency,
+  ) onSave,
+}) async {
+  final TextEditingController controller = TextEditingController(text: existingGoalName);
+  
+  await showDialog(
+    context: context,
+    builder: (context) => Goaldialogbox(
+      controller: controller,
+      initialDescription: existingDescription,
+      initialTargetDate: existingTargetDate,
+      initialImportance: existingImportance,
+      initialUrgency: existingUrgency,
+      onSave: onSave,
+      onCancel: () => Navigator.of(context).pop(),
+    ),
+  );
 }
 
 class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
@@ -55,8 +88,8 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
     _selectedDueDate = widget.initialTargetDate;
     if (_selectedDueDate != null) {
       _selectedTime = TimeOfDay.fromDateTime(_selectedDueDate!);
-    }
   }
+}
 
   @override
   void dispose() {
@@ -162,7 +195,15 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
               children: [
                 Buttonstyl(
                   savetext: 'Save',
-                  onPressed: () {
+                  onPressed: () async {
+                    final goalName = widget.controller.text.trim();
+                    if (goalName.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a goal name')),
+                      );
+                      return;
+                    }
+
                     DateTime? finalDueDate;
                     if (_selectedDueDate != null) {
                       if (_selectedTime != null) {
@@ -185,14 +226,18 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
                     final importance = _isImportant ? 'IMPORTANT' : 'NOT IMPORTANT';
                     final urgency = _isUrgent ? 'URGENT' : 'NOT URGENT';
                   
-                    widget.onSave(
-                      widget.controller.text,
+                    await widget.onSave(
+                      goalName,
                       _descriptionController.text,
                       finalDueDate,
                       false,
                       importance,
                       urgency,
                     );
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
                   },
                 ),
                 const SizedBox(width: 8),

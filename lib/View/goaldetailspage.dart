@@ -36,36 +36,28 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
   }
 
   void _editGoal() {
-    showDialog(
+    showGoalDialog(
       context: context,
-      builder: (_) => Goaldialogbox(
-        controller: _goalController,
-        initialDescription: widget.goal.description,
-        initialTargetDate: widget.goal.targetDate,
-        initialImportance: widget.goal.importance == 'IMPORTANT',
-        initialUrgency: widget.goal.urgency == 'URGENT',
-        onSave: (name, description, dueDate, isCompleted, importance, urgency) {
-          final updatedGoal = Goal(
-            title: name,
-            description: description,
-            targetDate: dueDate!,
-            isCompleted: widget.goal.isCompleted,
-            importance: importance,
-            urgency: urgency,
-          );
-          ref.read(goalsPageViewModelProvider.notifier).updateGoal(
-                widget.goal.id!,
-                updatedGoal,
-              );
-          _goalController.clear();
-          Navigator.pop(context);
-          Navigator.pop(context);
-        },
-        onCancel: () {
-          _goalController.clear();
-          Navigator.pop(context);
-        },
-      ),
+      existingGoalName: widget.goal.title,
+      existingDescription: widget.goal.description,
+      existingTargetDate: widget.goal.targetDate,
+      existingImportance: widget.goal.importance == 'IMPORTANT',
+      existingUrgency: widget.goal.urgency == 'URGENT',
+      onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
+        final updatedGoal = Goal(
+          title: name,
+          description: description,
+          targetDate: dueDate ?? widget.goal.targetDate,
+          isCompleted: widget.goal.isCompleted,
+          importance: importance,
+          urgency: urgency,
+        );
+        await ref.read(goalsPageViewModelProvider.notifier).updateGoal(
+              widget.goal.id!,
+              updatedGoal,
+            );
+        Navigator.pop(context);
+      },
     );
   }
 

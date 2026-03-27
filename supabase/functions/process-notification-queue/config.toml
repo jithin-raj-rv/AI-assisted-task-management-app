@@ -1,7 +1,0 @@
-name: Supabase API
-description: "Process Notification Queue"
-
-services:
-  functions:
-    process-notification-queue:
-      verify_jwt: false

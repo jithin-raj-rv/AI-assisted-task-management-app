@@ -23,7 +23,7 @@ class TodoDialogbox extends ConsumerStatefulWidget {
   final String? initialDescription;
   final DateTime? initialDueDate;
   final VoidCallback onCancel;
-  final Function(
+  final Future<void> Function(
     String name,
     String description,
     DateTime? dueDate,
@@ -36,6 +36,38 @@ class TodoDialogbox extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<TodoDialogbox> createState() => _TodoDialogboxState();
+}
+
+/// Shows the styled todo dialog
+Future<void> showTodoDialog({
+  required BuildContext context,
+  String? existingTaskName,
+  String? existingDescription,
+  DateTime? existingDueDate,
+  bool existingImportance = false,
+  bool existingUrgency = false,
+  required Future<void> Function(
+    String name,
+    String description,
+    DateTime? dueDate,
+    bool isImportant,
+    bool isUrgent,
+  ) onSave,
+}) async {
+  final TextEditingController controller = TextEditingController(text: existingTaskName);
+  
+  await showDialog(
+    context: context,
+    builder: (context) => TodoDialogbox(
+      controller: controller,
+      initialDescription: existingDescription,
+      initialDueDate: existingDueDate,
+      initialImportance: existingImportance,
+      initialUrgency: existingUrgency,
+      onSave: onSave,
+      onCancel: () => Navigator.of(context).pop(),
+    ),
+  );
 }
 
 class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
@@ -55,8 +87,8 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
     _selectedDueDate = widget.initialDueDate?.toLocal();
     if (_selectedDueDate != null) {
       _selectedTime = TimeOfDay.fromDateTime(_selectedDueDate!);
-    }
   }
+}
 
   @override
   void dispose() {
@@ -182,7 +214,15 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
               children: [
                 Buttonstyl(
                   savetext: 'Save',
-                  onPressed: () {
+                  onPressed: () async {
+                    final taskName = widget.controller.text.trim();
+                    if (taskName.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a task name')),
+                      );
+                      return;
+                    }
+
                     DateTime? finalDueDate;
                     if (_selectedDueDate != null) {
                       if (_selectedTime != null) {
@@ -202,13 +242,17 @@ class _TodoDialogboxState extends ConsumerState<TodoDialogbox> {
                       }
                     }
                   
-                    widget.onSave(
-                      widget.controller.text,
+                    await widget.onSave(
+                      taskName,
                       _descriptionController.text,
                       finalDueDate,
                       _isImportant,
                       _isUrgent,
                     );
+
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
                   },
                 ),
                 const SizedBox(width: 8),

@@ -61,56 +61,48 @@ class _TodoPageState extends ConsumerState<TodoPage> {
   }
 
   void _showTodoDialog({Todo? todo}) {
-    _taskNameController.text = todo?.taskName ?? '';
-    showDialog(
+    showTodoDialog(
       context: context,
-      builder: (BuildContext context) {
-        return TodoDialogbox(
-          controller: _taskNameController,
-          initialDescription: todo?.description,
-          initialImportance: todo?.importance == 'IMPORTANT',
-          initialUrgency: todo?.urgency == 'URGENT',
-          initialDueDate: todo?.dueDate,
-          onSave: (
-            String name,
-            String description,
-            DateTime? dueDate,
-            bool isImportant,
-            bool isUrgent,
-          ) async {
-            final connectivity = ref.read(connectivityServiceProvider);
-            if (connectivity.currentStatus != ConnectivityStatus.online) {
-              OfflineUtils.showOfflinePopup(context);
-              return;
-            }
+      existingTaskName: todo?.taskName,
+      existingDescription: todo?.description,
+      existingDueDate: todo?.dueDate,
+      existingImportance: todo?.importance == 'IMPORTANT',
+      existingUrgency: todo?.urgency == 'URGENT',
+      onSave: (
+        String name,
+        String description,
+        DateTime? dueDate,
+        bool isImportant,
+        bool isUrgent,
+      ) async {
+        final connectivity = ref.read(connectivityServiceProvider);
+        if (connectivity.currentStatus != ConnectivityStatus.online) {
+          OfflineUtils.showOfflinePopup(context);
+          return;
+        }
 
-            final importance = isImportant ? 'IMPORTANT' : 'NOT IMPORTANT';
-            final urgency = isUrgent ? 'URGENT' : 'NOT URGENT';
-            if (todo != null) {
-              // Update existing todo
-              final updatedTodo = todo.copyWith(
+        final importance = isImportant ? 'IMPORTANT' : 'NOT IMPORTANT';
+        final urgency = isUrgent ? 'URGENT' : 'NOT URGENT';
+        if (todo != null) {
+          // Update existing todo
+          final updatedTodo = todo.copyWith(
+            taskName: name,
+            description: description,
+            importance: importance,
+            urgency: urgency,
+            dueDate: dueDate ?? todo.dueDate,
+          );
+          await ref.read(todoViewModelProvider.notifier).updateTodo(updatedTodo);
+        } else {
+          // Add new todo
+          await ref.read(todoViewModelProvider.notifier).createTodo(
                 taskName: name,
-                description: description,
                 importance: importance,
                 urgency: urgency,
-                dueDate: dueDate ?? todo.dueDate,
+                description: description,
+                dueDate: dueDate,
               );
-              await ref.read(todoViewModelProvider.notifier).updateTodo(updatedTodo);
-            } else {
-              // Add new todo
-              await ref.read(todoViewModelProvider.notifier).createTodo(
-                    taskName: name,
-                    importance: importance,
-                    urgency: urgency,
-                    description: description,
-                    dueDate: dueDate,
-                  );
-            }
-          },
-          onCancel: () {
-            Navigator.of(context).pop();
-          },
-        );
+        }
       },
     );
   }
