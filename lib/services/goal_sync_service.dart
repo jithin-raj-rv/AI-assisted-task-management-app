@@ -33,17 +33,27 @@ class GoalSyncService {
 
     try {
       final goalsData = await _supabase.from('goals').select('*').eq('user_id', user.id) as List;
-      final goals = goalsData.map((g) => Goal(
-        id: g['id'],
-        title: g['title'],
-        description: g['description'] ?? '',
-        isCompleted: g['is_completed'] ?? false,
-        userId: g['user_id'],
-        createdAt: g['created_at'] != null ? DateTime.parse(g['created_at']) : null,
-        updatedAt: g['updated_at'] != null ? DateTime.parse(g['updated_at']) : null,
-        importance: g['importance'] ?? 'NOT IMPORTANT',
-        urgency: g['urgency'] ?? 'NOT URGENT',
-      )).toList();
+      final goals = goalsData.map((g) {
+        int progress = 0;
+        if (g['is_completed'] != null) {
+          if (g['is_completed'] is int) {
+            progress = g['is_completed'];
+          } else if (g['is_completed'] is bool) {
+            progress = g['is_completed'] ? 100 : 0;
+          }
+        }
+        return Goal(
+          id: g['id'],
+          title: g['title'],
+          description: g['description'] ?? '',
+          isCompleted: progress,
+          userId: g['user_id'],
+          createdAt: g['created_at'] != null ? DateTime.parse(g['created_at']) : null,
+          updatedAt: g['updated_at'] != null ? DateTime.parse(g['updated_at']) : null,
+          importance: g['importance'] ?? 'NOT IMPORTANT',
+          urgency: g['urgency'] ?? 'NOT URGENT',
+        );
+      }).toList();
 
       final box = await Hive.openBox<Goal>('goals');
       final newGoals = {for (var goal in goals) goal.id!: goal};
@@ -90,11 +100,19 @@ class GoalSyncService {
             final record = payload.newRecord!;
             print('[GoalSync] Processing ${payload.eventType} for goal id: ${record['id']}');
             print('[GoalSync] Record fields: id=${record['id']}, title=${record['title']}, description=${record['description']}, is_completed=${record['is_completed']}, user_id=${record['user_id']}');
+            int progress = 0;
+            if (record['is_completed'] != null) {
+              if (record['is_completed'] is int) {
+                progress = record['is_completed'];
+              } else if (record['is_completed'] is bool) {
+                progress = record['is_completed'] ? 100 : 0;
+              }
+            }
             final goal = Goal(
               id: record['id'],
               title: record['title'],
               description: record['description'] ?? '',
-              isCompleted: record['is_completed'] ?? false,
+              isCompleted: progress,
               userId: record['user_id'],
               createdAt: record['created_at'] != null ? DateTime.parse(record['created_at']) : null,
               updatedAt: record['updated_at'] != null ? DateTime.parse(record['updated_at']) : null,

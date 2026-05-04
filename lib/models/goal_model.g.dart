@@ -16,11 +16,17 @@ class GoalAdapter extends TypeAdapter<Goal> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    int parseCompleted(dynamic val) {
+      if (val is int) return val;
+      if (val is bool) return val ? 100 : 0;
+      return 0;
+    }
+
     return Goal(
       id: fields[0] as String?,
       title: fields[1] as String,
       description: fields[2] as String,
-      isCompleted: fields[4] as bool,
+      isCompleted: parseCompleted(fields[4]),
       userId: fields[5] as String?,
       createdAt: fields[6] as DateTime?,
       updatedAt: fields[7] as DateTime?,

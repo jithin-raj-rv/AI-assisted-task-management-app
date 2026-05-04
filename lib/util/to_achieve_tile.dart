@@ -54,15 +54,15 @@ class ToAchieveTile extends ConsumerWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: toAchieve.targetDate != null
-            ? Text(
-                'Due: ${DateFormat('MMM dd, yyyy').format(toAchieve.targetDate!)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: toAchieve.isCompleted ? Colors.grey : appTheme.primary.withOpacity(0.7),
-                ),
-              )
-            : null,
+        subtitle: Text(
+          toAchieve.targetDate != null 
+            ? 'Due: ${DateFormat('MMM dd, yyyy').format(toAchieve.targetDate!)}'
+            : 'Due: Not set',
+          style: TextStyle(
+            fontSize: 12,
+            color: toAchieve.isCompleted ? Colors.grey : appTheme.primary.withOpacity(0.7),
+          ),
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -113,7 +113,7 @@ class GoalTile extends ConsumerWidget {
                         ),
                       ),
                     const SizedBox(width: 8),
-                    if (goal.isCompleted)
+                    if (goal.isCompleted == 100)
                       const Icon(Icons.check_circle, color: Colors.green, size: 24),
                   ],
                 ),

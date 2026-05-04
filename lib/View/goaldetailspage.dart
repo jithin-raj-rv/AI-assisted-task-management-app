@@ -52,6 +52,10 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
           title: name,
           description: description,
           isCompleted: widget.goal.isCompleted,
+          id: widget.goal.id,
+          userId: widget.goal.userId,
+          createdAt: widget.goal.createdAt,
+          updatedAt: widget.goal.updatedAt,
           importance: importance,
           urgency: urgency,
         );
@@ -128,7 +132,7 @@ class _GoalDetailsPageState extends ConsumerState<GoalDetailsPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Completed: ${widget.goal.isCompleted ? 'Yes' : 'No'}',
+              'Progress: ${widget.goal.isCompleted}%',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),

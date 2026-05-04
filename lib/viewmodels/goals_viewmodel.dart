@@ -219,7 +219,7 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
   }
 
   // To Achieve methods
-  Future<void> addToAchieve(String goalId, String title, DateTime? targetDate) async {
+  Future<void> addToAchieve(String goalId, String title, DateTime targetDate) async {
     const uuid = Uuid();
     final newId = uuid.v4();
     

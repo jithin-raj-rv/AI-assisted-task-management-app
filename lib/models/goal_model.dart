@@ -18,7 +18,7 @@ class Goal extends HiveObject {
   // @HiveField(3) used to be targetDate
 
   @HiveField(4)
-  bool isCompleted;
+  int isCompleted;
 
   @HiveField(5)
   String? userId;
@@ -41,7 +41,7 @@ class Goal extends HiveObject {
     this.id,
     required this.title,
     required this.description,
-    this.isCompleted = false,
+    this.isCompleted = 0,
     this.userId,
     this.createdAt,
     this.updatedAt,
@@ -64,10 +64,12 @@ class Goal extends HiveObject {
   }
   // Constructor to create a Goal from the existing List<dynamic> format
   factory Goal.fromHiveList(List<dynamic> data) {
-    bool completed = false;
+    int completed = 0;
     if (data.length > 3) {
-      if (data[3] is bool) {
-        completed = data[3] as bool;
+      if (data[3] is int) {
+        completed = data[3] as int;
+      } else if (data[3] is bool) {
+        completed = (data[3] as bool) ? 100 : 0;
       }
     }
     

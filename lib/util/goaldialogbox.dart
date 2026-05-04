@@ -27,7 +27,7 @@ class Goaldialogbox extends ConsumerStatefulWidget {
     String name,
     String description,
     DateTime? dueDate,
-    bool isCompleted,
+    int isCompleted,
     String importance,
     String urgency,
   ) onSave;
@@ -47,7 +47,7 @@ Future<void> showGoalDialog({
     String name,
     String description,
     DateTime? dueDate,
-    bool isCompleted,
+    int isCompleted,
     String importance,
     String urgency,
   ) onSave,
@@ -152,7 +152,7 @@ class _GoaldialogboxState extends ConsumerState<Goaldialogbox> {
                       goalName,
                       _descriptionController.text,
                       null,
-                      false,
+                      0,
                       importance,
                       urgency,
                     );

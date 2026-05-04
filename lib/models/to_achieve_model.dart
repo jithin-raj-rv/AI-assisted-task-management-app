@@ -28,8 +28,8 @@ class ToAchieve extends HiveObject {
     required this.title,
     this.isCompleted = false,
     this.priorityOrder = 0,
-    this.targetDate,
-  });
+    DateTime? targetDate,
+  }) : targetDate = targetDate ?? DateTime.now().add(Duration(days: 7));
 
   ToAchieve clone() {
     return ToAchieve(

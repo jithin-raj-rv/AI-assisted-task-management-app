@@ -11,7 +11,7 @@ class ToAchieveDialogBox extends ConsumerStatefulWidget {
   final String? initialTitle;
   final DateTime? initialTargetDate;
   final VoidCallback onCancel;
-  final void Function(String, DateTime?) onSave;
+  final void Function(String, DateTime) onSave;
 
   const ToAchieveDialogBox({
     super.key,
@@ -33,7 +33,7 @@ class _ToAchieveDialogBoxState extends ConsumerState<ToAchieveDialogBox> {
   @override
   void initState() {
     super.initState();
-    _selectedDueDate = widget.initialTargetDate;
+    _selectedDueDate = widget.initialTargetDate ?? DateTime.now().add(Duration(days: 1));
     if (_selectedDueDate != null) {
       _selectedTime = TimeOfDay.fromDateTime(_selectedDueDate!);
     }
@@ -72,16 +72,13 @@ class _ToAchieveDialogBoxState extends ConsumerState<ToAchieveDialogBox> {
               Expanded(
                 child: Smalltextgradient(
                   fontsize: 15,
-                  text: 
-                  _selectedDueDate == null
-                      ? 'No due date selected'
-                      : 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}'
+                  text: 'Due Date: ${DateFormat('MMM dd, yyyy').format(_selectedDueDate!)}'
                 ),
               ),
               TextButton(
                 onPressed: () => _selectDate(context),
                 child: const Smalltextgradient(
-                  text:'Select Date',
+                  text:'Change Date',
                   fontsize: 15,
                 ),
               ),
@@ -105,23 +102,28 @@ class _ToAchieveDialogBoxState extends ConsumerState<ToAchieveDialogBox> {
                       return;
                     }
 
-                    DateTime? finalDueDate;
-                    if (_selectedDueDate != null) {
-                      if (_selectedTime != null) {
-                        finalDueDate = DateTime(
-                          _selectedDueDate!.year,
-                          _selectedDueDate!.month,
-                          _selectedDueDate!.day,
-                          _selectedTime!.hour,
-                          _selectedTime!.minute,
-                        );
-                      } else {
-                        finalDueDate = DateTime(
-                          _selectedDueDate!.year,
-                          _selectedDueDate!.month,
-                          _selectedDueDate!.day,
-                        );
-                      }
+                    if (_selectedDueDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select a due date')),
+                      );
+                      return;
+                    }
+
+                    DateTime finalDueDate;
+                    if (_selectedTime != null) {
+                      finalDueDate = DateTime(
+                        _selectedDueDate!.year,
+                        _selectedDueDate!.month,
+                        _selectedDueDate!.day,
+                        _selectedTime!.hour,
+                        _selectedTime!.minute,
+                      );
+                    } else {
+                      finalDueDate = DateTime(
+                        _selectedDueDate!.year,
+                        _selectedDueDate!.month,
+                        _selectedDueDate!.day,
+                      );
                     }
 
                     widget.onSave(title, finalDueDate);

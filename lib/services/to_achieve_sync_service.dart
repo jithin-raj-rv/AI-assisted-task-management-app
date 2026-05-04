@@ -31,14 +31,26 @@ class ToAchieveSyncService {
 
     try {
       final data = await _supabase.from('to_achieves').select('*').eq('user_id', user.id) as List;
-      final toAchieves = data.map((item) => ToAchieve(
-        id: item['id'],
-        goalId: item['goal_id'],
-        title: item['title'],
-        isCompleted: item['is_completed'] ?? false,
-        priorityOrder: item['priority_order'] ?? 0,
-        targetDate: item['target_date'] != null ? DateTime.parse(item['target_date']) : null,
-      )).toList();
+      final toAchieves = data.map((item) {
+        DateTime targetDate;
+        if (item['target_date'] != null) {
+          try {
+            targetDate = DateTime.parse(item['target_date']);
+          } catch (e) {
+            targetDate = DateTime.now().add(Duration(days: 7));
+          }
+        } else {
+          targetDate = DateTime.now().add(Duration(days: 7));
+        }
+        return ToAchieve(
+          id: item['id'],
+          goalId: item['goal_id'],
+          title: item['title'],
+          isCompleted: item['is_completed'] ?? false,
+          priorityOrder: item['priority_order'] ?? 0,
+          targetDate: targetDate,
+        );
+      }).toList();
 
       final box = await Hive.openBox<ToAchieve>('to_achieves');
       final newItems = {for (var item in toAchieves) item.id!: item};
@@ -76,13 +88,24 @@ class ToAchieveSyncService {
           final box = Hive.box<ToAchieve>('to_achieves');
           if (payload.eventType.name == 'insert' || payload.eventType.name == 'update') {
             final record = payload.newRecord!;
+            DateTime targetDate;
+            if (record['target_date'] != null) {
+              try {
+                targetDate = DateTime.parse(record['target_date']);
+              } catch (e) {
+                targetDate = DateTime.now().add(Duration(days: 7));
+              }
+            } else {
+              targetDate = DateTime.now().add(Duration(days: 7));
+            }
+            
             final toAchieve = ToAchieve(
               id: record['id'],
               goalId: record['goal_id'],
               title: record['title'],
               isCompleted: record['is_completed'] ?? false,
               priorityOrder: record['priority_order'] ?? 0,
-              targetDate: record['target_date'] != null ? DateTime.parse(record['target_date']) : null,
+              targetDate: targetDate,
             );
             box.put(toAchieve.id!, toAchieve);
           } else if (payload.eventType.name == 'delete') {
