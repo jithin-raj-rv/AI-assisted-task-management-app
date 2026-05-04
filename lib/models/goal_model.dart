@@ -15,8 +15,7 @@ class Goal extends HiveObject {
   @HiveField(2)
   String description;
 
-  @HiveField(3)
-  DateTime targetDate;
+  // @HiveField(3) used to be targetDate
 
   @HiveField(4)
   bool isCompleted;
@@ -42,7 +41,6 @@ class Goal extends HiveObject {
     this.id,
     required this.title,
     required this.description,
-    required this.targetDate,
     this.isCompleted = false,
     this.userId,
     this.createdAt,
@@ -56,7 +54,6 @@ class Goal extends HiveObject {
       id: id,
       title: title,
       description: description,
-      targetDate: targetDate,
       isCompleted: isCompleted,
       userId: userId,
       createdAt: createdAt,
@@ -65,14 +62,20 @@ class Goal extends HiveObject {
       urgency: urgency,
     );
   }
-    // Constructor to create a Goal from the existing List<dynamic> format
+  // Constructor to create a Goal from the existing List<dynamic> format
   factory Goal.fromHiveList(List<dynamic> data) {
+    bool completed = false;
+    if (data.length > 3) {
+      if (data[3] is bool) {
+        completed = data[3] as bool;
+      }
+    }
+    
     return Goal(
       id: data.length > 4 ? data[4] as String? : null,
-      title: data[0] as String,
-      description: data[1] as String,
-      targetDate: data[2] as DateTime,
-      isCompleted: data[3] as bool,
+      title: data.isNotEmpty ? data[0] as String : '',
+      description: data.length > 1 ? data[1] as String : '',
+      isCompleted: completed,
       userId: data.length > 5 ? data[5] as String? : null,
       createdAt: data.length > 6 ? data[6] as DateTime? : null,
       updatedAt: data.length > 7 ? data[7] as DateTime? : null,
@@ -83,12 +86,12 @@ class Goal extends HiveObject {
 
   // Method to convert a Goal object back to the List<dynamic> format for Hive storage
   List<dynamic> toHiveList() {
-    return [title, description, targetDate, isCompleted, id, userId, createdAt, updatedAt, importance, urgency];
+    return [title, description, null, isCompleted, id, userId, createdAt, updatedAt, importance, urgency];
   }
 
   @override
   String toString() {
-    return 'Goal(title: $title, description: $description, targetDate: $targetDate, isCompleted: $isCompleted)';
+    return 'Goal(title: $title, description: $description, isCompleted: $isCompleted)';
   }
 
   @override

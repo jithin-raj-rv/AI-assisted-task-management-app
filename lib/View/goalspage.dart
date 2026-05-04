@@ -5,6 +5,8 @@ import 'package:to_do_list/util/goaldialogbox.dart';
 import 'package:to_do_list/util/goaltile.dart';
 import 'package:to_do_list/models/goal_model.dart';
 import 'package:to_do_list/viewmodels/goals_viewmodel.dart';
+import 'package:to_do_list/util/system_dialog_box.dart';
+import 'package:to_do_list/util/system_tile.dart';
 import 'package:to_do_list/util/tittlegradient.dart';
 import 'package:to_do_list/util/mediumgradienttext.dart';
 import 'package:to_do_list/util/offline_utils.dart';
@@ -83,7 +85,6 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       context: context,
       existingGoalName: goal.title,
       existingDescription: goal.description,
-      existingTargetDate: goal.targetDate,
       existingImportance: goal.importance == 'IMPORTANT',
       existingUrgency: goal.urgency == 'URGENT',
       onSave: (name, description, dueDate, isCompleted, importance, urgency) async {
@@ -97,7 +98,6 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           Goal(
             title: name,
             description: description,
-            targetDate: dueDate ?? goal.targetDate,
             isCompleted: goal.isCompleted,
             id: goal.id,
             userId: goal.userId,
@@ -125,7 +125,6 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           Goal(
             title: name,
             description: description,
-            targetDate: dueDate ?? DateTime.now(),
             importance: importance,
             urgency: urgency,
           ),
@@ -148,6 +147,33 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         appBar: AppBar(
           backgroundColor: appTheme.background,
           title: Tittlegradient(text: 'My Goals'),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.help_outline, color: appTheme.foreground),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: appTheme.background,
+                    title: Text(
+                      'My goals are my identity',
+                      style: TextStyle(color: appTheme.foreground),
+                    ),
+                    content: Text(
+                      'Goals help define who you are and where you are going. Setting clear goals gives you direction, purpose, and motivation to achieve your true potential.',
+                      style: TextStyle(color: appTheme.foreground.withOpacity(0.8)),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Got it', style: TextStyle(color: appTheme.actionGradientStart)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         body: Center(
           child: Text('No goals yet!', style: TextStyle(color: Colors.white)),
@@ -165,6 +191,33 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       appBar: AppBar(
         backgroundColor: appTheme.background,
         title: Tittlegradient(text: 'My Goals'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.help_outline, color: appTheme.foreground),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: appTheme.background,
+                  title: Text(
+                    'My goals are my identity',
+                    style: TextStyle(color: appTheme.foreground),
+                  ),
+                  content: Text(
+                    'Goals help define who you are and where you are going. Setting clear goals gives you direction, purpose, and motivation to achieve your true potential.',
+                    style: TextStyle(color: appTheme.foreground.withOpacity(0.8)),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Got it', style: TextStyle(color: appTheme.actionGradientStart)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Container(
         color: appTheme.background,

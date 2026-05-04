@@ -1,53 +1,47 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal_step_model.dart';
+part of 'to_achieve_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalStepAdapter extends TypeAdapter<GoalStep> {
+class ToAchieveAdapter extends TypeAdapter<ToAchieve> {
   @override
-  final int typeId = 9;
+  final int typeId = 14;
 
   @override
-  GoalStep read(BinaryReader reader) {
+  ToAchieve read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return GoalStep(
+    return ToAchieve(
       id: fields[0] as String?,
       goalId: fields[1] as String,
-      stepText: fields[2] as String,
+      title: fields[2] as String,
       isCompleted: fields[3] as bool,
-      sortOrder: fields[4] as int,
-      userId: fields[5] as String?,
-      createdAt: fields[6] as DateTime?,
-      updatedAt: fields[7] as DateTime?,
+      priorityOrder: fields[4] as int,
+      targetDate: fields[5] as DateTime?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, GoalStep obj) {
+  void write(BinaryWriter writer, ToAchieve obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.goalId)
       ..writeByte(2)
-      ..write(obj.stepText)
+      ..write(obj.title)
       ..writeByte(3)
       ..write(obj.isCompleted)
       ..writeByte(4)
-      ..write(obj.sortOrder)
+      ..write(obj.priorityOrder)
       ..writeByte(5)
-      ..write(obj.userId)
-      ..writeByte(6)
-      ..write(obj.createdAt)
-      ..writeByte(7)
-      ..write(obj.updatedAt);
+      ..write(obj.targetDate);
   }
 
   @override
@@ -56,7 +50,7 @@ class GoalStepAdapter extends TypeAdapter<GoalStep> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalStepAdapter &&
+      other is ToAchieveAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

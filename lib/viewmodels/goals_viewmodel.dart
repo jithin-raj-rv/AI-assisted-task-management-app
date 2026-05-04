@@ -1,23 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_list/models/goal_model.dart';
-import 'package:to_do_list/models/goal_step_model.dart';
+import 'package:to_do_list/models/system_model.dart';
 import 'package:to_do_list/cache/goal_cache.dart';
-import 'package:to_do_list/cache/goal_step_cache.dart';
-import 'package:to_do_list/sync_providers.dart';
+import 'package:to_do_list/cache/system_cache.dart';
+import 'package:to_do_list/cache/to_achieve_cache.dart';
 import 'package:to_do_list/services/goal_sync_service.dart';
+import 'package:to_do_list/sync_providers.dart';
+import 'package:to_do_list/services/system_sync_service.dart';
+import 'package:to_do_list/models/to_achieve_model.dart';
+import 'package:to_do_list/services/to_achieve_sync_service.dart';
 import 'package:uuid/uuid.dart';
 
 class GoalsPageState {
   final List<Goal> goals;
-  final Map<String, List<GoalStep>> goalSteps; // Map of goalId to steps
+  final Map<String, List<System>> systems; // Map of goalId to systems
+  final Map<String, List<ToAchieve>> toAchieves; // Map of goalId to toAchieves
   final bool isLoading;
 
-  const GoalsPageState({this.goals = const [], this.goalSteps = const {}, this.isLoading = false});
+  const GoalsPageState({
+    this.goals = const [],
+    this.systems = const {},
+    this.toAchieves = const {},
+    this.isLoading = false,
+  });
 
-  GoalsPageState copyWith({List<Goal>? goals, Map<String, List<GoalStep>>? goalSteps, bool? isLoading}) {
+  GoalsPageState copyWith({
+    List<Goal>? goals,
+    Map<String, List<System>>? systems,
+    Map<String, List<ToAchieve>>? toAchieves,
+    bool? isLoading,
+  }) {
     return GoalsPageState(
       goals: goals ?? this.goals,
-      goalSteps: goalSteps ?? this.goalSteps,
+      systems: systems ?? this.systems,
+      toAchieves: toAchieves ?? this.toAchieves,
       isLoading: isLoading ?? this.isLoading,
     );
   }
@@ -25,7 +41,8 @@ class GoalsPageState {
 
 class GoalsPageViewModel extends Notifier<GoalsPageState> {
   final GoalCache _cache = GoalCache();
-  final GoalStepCache _goalStepCache = GoalStepCache();
+  final SystemCache _systemCache = SystemCache();
+  final ToAchieveCache _toAchieveCache = ToAchieveCache();
   late final GoalSyncService _syncService;
 
   @override
@@ -39,26 +56,44 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
     // Listen to goals cache
     _cache.watchAll().listen((goals) {
       print('[GoalsPageViewModel] cache listener: received ${goals.length} goals, updating state');
-      state = GoalsPageState(goals: goals, goalSteps: state.goalSteps, isLoading: false);
+      state = state.copyWith(goals: goals, isLoading: false);
     });
     
-    // Listen to goal steps cache
-    _goalStepCache.watchAll().listen((allSteps) {
-      print('[GoalsPageViewModel] goal steps cache listener: received ${allSteps.length} steps');
-      // Group steps by goalId
-      final Map<String, List<GoalStep>> groupedSteps = {};
-      for (final step in allSteps) {
-        if (!groupedSteps.containsKey(step.goalId)) {
-          groupedSteps[step.goalId] = [];
+    // Listen to systems cache
+    _systemCache.watchAll().listen((allSystems) {
+      print('[GoalsPageViewModel] systems cache listener: received ${allSystems.length} systems');
+      // Group systems by goalId
+      final Map<String, List<System>> groupedSystems = {};
+      for (final system in allSystems) {
+        if (!groupedSystems.containsKey(system.goalId)) {
+          groupedSystems[system.goalId] = [];
         }
-        groupedSteps[step.goalId]!.add(step);
+        groupedSystems[system.goalId]!.add(system);
       }
-      // Sort each goal's steps by sortOrder
-      for (final goalId in groupedSteps.keys) {
-        groupedSteps[goalId]!.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      // Sort each goal's systems by priorityOrder
+      for (final goalId in groupedSystems.keys) {
+        groupedSystems[goalId]!.sort((a, b) => a.priorityOrder.compareTo(b.priorityOrder));
       }
-      print('[GoalsPageViewModel] goal steps grouped by goal: ${groupedSteps.keys.length} goals');
-      state = GoalsPageState(goals: state.goals, goalSteps: groupedSteps, isLoading: false);
+      print('[GoalsPageViewModel] systems grouped by goal: ${groupedSystems.keys.length} goals');
+      state = state.copyWith(systems: groupedSystems, isLoading: false);
+    });
+
+    // Listen to toAchieves cache
+    _toAchieveCache.watchAll().listen((allToAchieves) {
+      print('[GoalsPageViewModel] toAchieves cache listener: received ${allToAchieves.length} items');
+      // Group toAchieves by goalId
+      final Map<String, List<ToAchieve>> groupedToAchieves = {};
+      for (final item in allToAchieves) {
+        if (!groupedToAchieves.containsKey(item.goalId)) {
+          groupedToAchieves[item.goalId] = [];
+        }
+        groupedToAchieves[item.goalId]!.add(item);
+      }
+      // Sort each goal's toAchieves by priorityOrder
+      for (final goalId in groupedToAchieves.keys) {
+        groupedToAchieves[goalId]!.sort((a, b) => a.priorityOrder.compareTo(b.priorityOrder));
+      }
+      state = state.copyWith(toAchieves: groupedToAchieves, isLoading: false);
     });
     
     return const GoalsPageState(isLoading: true);
@@ -67,24 +102,43 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
   Future<void> _loadInitialData() async {
     try {
       final goals = await _cache.getAll();
-      final allSteps = await _goalStepCache.getAll();
+      final allSystems = await _systemCache.getAll();
+      final allToAchieves = await _toAchieveCache.getAll();
       
-      if (goals.isNotEmpty || allSteps.isNotEmpty) {
-        // Group steps by goalId
-        final Map<String, List<GoalStep>> groupedSteps = {};
-        for (final step in allSteps) {
-          if (!groupedSteps.containsKey(step.goalId)) {
-            groupedSteps[step.goalId] = [];
+      if (goals.isNotEmpty || allSystems.isNotEmpty || allToAchieves.isNotEmpty) {
+        // Group systems by goalId
+        final Map<String, List<System>> groupedSystems = {};
+        for (final system in allSystems) {
+          if (!groupedSystems.containsKey(system.goalId)) {
+            groupedSystems[system.goalId] = [];
           }
-          groupedSteps[step.goalId]!.add(step);
+          groupedSystems[system.goalId]!.add(system);
         }
-        // Sort each goal's steps by sortOrder
-        for (final goalId in groupedSteps.keys) {
-          groupedSteps[goalId]!.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+        // Sort each goal's systems by priorityOrder
+        for (final goalId in groupedSystems.keys) {
+          groupedSystems[goalId]!.sort((a, b) => a.priorityOrder.compareTo(b.priorityOrder));
+        }
+
+        // Group toAchieves by goalId
+        final Map<String, List<ToAchieve>> groupedToAchieves = {};
+        for (final item in allToAchieves) {
+          if (!groupedToAchieves.containsKey(item.goalId)) {
+            groupedToAchieves[item.goalId] = [];
+          }
+          groupedToAchieves[item.goalId]!.add(item);
+        }
+        // Sort each goal's toAchieves by priorityOrder
+        for (final goalId in groupedToAchieves.keys) {
+          groupedToAchieves[goalId]!.sort((a, b) => a.priorityOrder.compareTo(b.priorityOrder));
         }
         
-        state = GoalsPageState(goals: goals, goalSteps: groupedSteps, isLoading: false);
-        print('[GoalsPageViewModel] Loaded ${goals.length} initial goals and ${allSteps.length} goal steps from cache');
+        state = GoalsPageState(
+          goals: goals,
+          systems: groupedSystems,
+          toAchieves: groupedToAchieves,
+          isLoading: false,
+        );
+        print('[GoalsPageViewModel] Loaded ${goals.length} goals, ${allSystems.length} systems, ${allToAchieves.length} toAchieves from cache');
       }
     } catch (e) {
       print('[GoalsPageViewModel] Error loading initial data: $e');
@@ -98,7 +152,6 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
       id: newId,
       title: goal.title,
       description: goal.description,
-      targetDate: goal.targetDate,
       isCompleted: goal.isCompleted,
       importance: goal.importance,
       urgency: goal.urgency,
@@ -115,62 +168,111 @@ class GoalsPageViewModel extends Notifier<GoalsPageState> {
     await _syncService.updateGoal(id, updated);
   }
 
-  // Goal Step methods
-  Future<void> addGoalStep(String goalId, String stepText) async {
+  // System methods
+  Future<void> addSystem(String goalId, String systemName) async {
     const uuid = Uuid();
     final newId = uuid.v4();
     
-    // Get current steps to determine the next sort order
-    final currentSteps = state.goalSteps[goalId] ?? [];
-    final nextSortOrder = currentSteps.length;
+    // Get current systems to determine the next priority order
+    final currentSystems = state.systems[goalId] ?? [];
+    final nextPriorityOrder = currentSystems.length;
     
-    final step = GoalStep(
+    final system = System(
       id: newId,
       goalId: goalId,
-      stepText: stepText,
+      systemName: systemName,
       isCompleted: false,
-      sortOrder: nextSortOrder,
+      priorityOrder: nextPriorityOrder,
     );
 
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    await syncService.createGoalStep(step);
+    final syncService = ref.watch(systemSyncServiceProvider);
+    await syncService.createSystem(system);
   }
 
-  Future<void> updateGoalStep(String id, GoalStep updated) async {
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    await syncService.updateGoalStep(id, updated);
+  Future<void> updateSystem(String id, System updated) async {
+    final syncService = ref.watch(systemSyncServiceProvider);
+    await syncService.updateSystem(id, updated);
   }
 
-  Future<void> deleteGoalStep(String id) async {
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    await syncService.deleteGoalStep(id);
+  Future<void> deleteSystem(String id) async {
+    final syncService = ref.watch(systemSyncServiceProvider);
+    await syncService.deleteSystem(id);
   }
 
-  Future<void> toggleGoalStepCompletion(String id, bool isCompleted) async {
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    final step = await syncService.getGoalStepById(id);
-    if (step != null) {
-      final updatedStep = step.clone()..isCompleted = isCompleted;
-      await syncService.updateGoalStep(id, updatedStep);
+  Future<void> toggleSystemCompletion(String id, bool isCompleted) async {
+    final syncService = ref.watch(systemSyncServiceProvider);
+    final system = await syncService.getSystemById(id);
+    if (system != null) {
+      final updatedSystem = system.clone()..isCompleted = isCompleted;
+      await syncService.updateSystem(id, updatedSystem);
     }
   }
 
-  Future<void> reorderGoalSteps(String goalId, List<GoalStep> steps) async {
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    await syncService.reorderGoalSteps(goalId, steps);
+  Future<void> reorderSystems(String goalId, List<System> systems) async {
+    final syncService = ref.watch(systemSyncServiceProvider);
+    await syncService.reorderSystems(goalId, systems);
   }
 
-  Future<List<GoalStep>> getGoalSteps(String goalId) async {
-    final syncService = ref.watch(goalStepSyncServiceProvider);
-    return await syncService.getGoalSteps(goalId);
+  Future<List<System>> getSystems(String goalId) async {
+    final syncService = ref.watch(systemSyncServiceProvider);
+    return await syncService.getSystems(goalId);
+  }
+
+  // To Achieve methods
+  Future<void> addToAchieve(String goalId, String title, DateTime? targetDate) async {
+    const uuid = Uuid();
+    final newId = uuid.v4();
+    
+    // Get current toAchieves to determine the next priority order
+    final currentToAchieves = state.toAchieves[goalId] ?? [];
+    final nextPriorityOrder = currentToAchieves.length;
+    
+    final toAchieve = ToAchieve(
+      id: newId,
+      goalId: goalId,
+      title: title,
+      targetDate: targetDate,
+      isCompleted: false,
+      priorityOrder: nextPriorityOrder,
+    );
+
+    final syncService = ref.watch(toAchieveSyncServiceProvider);
+    await syncService.createToAchieve(toAchieve);
+  }
+
+  Future<void> updateToAchieve(String id, ToAchieve updated) async {
+    final syncService = ref.watch(toAchieveSyncServiceProvider);
+    await syncService.updateToAchieve(id, updated);
+  }
+
+  Future<void> deleteToAchieve(String id) async {
+    final syncService = ref.watch(toAchieveSyncServiceProvider);
+    await syncService.deleteToAchieve(id);
+  }
+
+  Future<void> toggleToAchieveCompletion(String id, bool isCompleted, String goalId) async {
+    final syncService = ref.watch(toAchieveSyncServiceProvider);
+    final currentItems = state.toAchieves[goalId] ?? [];
+    try {
+      final item = currentItems.firstWhere((element) => element.id == id);
+      final updatedItem = item.clone()..isCompleted = isCompleted;
+      await syncService.updateToAchieve(id, updatedItem);
+    } catch (e) {
+      print('Could not find ToAchieve with id $id in state.');
+    }
+  }
+
+  Future<void> reorderToAchieves(String goalId, List<ToAchieve> toAchieves) async {
+    final syncService = ref.watch(toAchieveSyncServiceProvider);
+    await syncService.reorderToAchieves(goalId, toAchieves);
   }
 }
 
 final goalsPageViewModelProvider =
     NotifierProvider<GoalsPageViewModel, GoalsPageState>(() => GoalsPageViewModel());
 
-// Provider for goal steps
-final goalStepsProvider = FutureProvider.autoDispose.family<List<GoalStep>, String>((ref, goalId) {
+// Provider for systems
+final systemsProvider = FutureProvider.autoDispose.family<List<System>, String>((ref, goalId) {
   final viewModel = ref.watch(goalsPageViewModelProvider.notifier);
-  return viewModel.getGoalSteps(goalId);
+  return viewModel.getSystems(goalId);
 });

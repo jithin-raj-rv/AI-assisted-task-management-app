@@ -61,7 +61,7 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
 
       await ref.read(todoSyncServiceProvider).syncFromSupabase();
       await ref.read(goalSyncServiceProvider).syncFromSupabase();
-      await ref.read(goalStepSyncServiceProvider).syncFromSupabase();
+      await ref.read(systemSyncServiceProvider).syncFromSupabase();
       await ref.read(reminderSyncServiceProvider).syncFromSupabase();
       await ref.read(settingsSyncServiceProvider).syncFromSupabase();
       await ref.read(timerPromptSyncServiceProvider).syncFromSupabase();
@@ -69,6 +69,7 @@ class DataSyncNotifier extends Notifier<AsyncValue<void>> {
       await ref.read(additionalInfoSyncServiceProvider).syncFromSupabase();
       await ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
       await ref.read(systemPromptSyncServiceProvider).syncFromSupabase();
+      await ref.read(toAchieveSyncServiceProvider).syncFromSupabase();
 
       _hasSynced = true;
       state = const AsyncData(null);
@@ -181,13 +182,14 @@ class AuthStateManager extends Notifier<bool> {
     // Then setup realtime subscriptions
     ref.read(todoSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(goalSyncServiceProvider).setupRealtimeSubscriptions();
-    ref.read(goalStepSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(systemSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(reminderSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(personalitySyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(timerPromptSyncServiceProvider).setupRealtimeSubscriptions();
     ref.read(userFeedbackSyncServiceProvider).syncFromSupabase();
     ref.read(systemPromptSyncServiceProvider).setupRealtimeSubscriptions();
+    ref.read(toAchieveSyncServiceProvider).setupRealtimeSubscriptions();
 
     print('[AuthStateManager] Realtime subscriptions set up');
   }
@@ -201,11 +203,12 @@ class AuthStateManager extends Notifier<bool> {
     // Clear realtime subscriptions
     ref.read(todoSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(goalSyncServiceProvider).clearRealtimeSubscriptions();
-    ref.read(goalStepSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(systemSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(reminderSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(personalitySyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(additionalInfoSyncServiceProvider).clearRealtimeSubscriptions();
     ref.read(timerPromptSyncServiceProvider).clearRealtimeSubscriptions();
+    ref.read(toAchieveSyncServiceProvider).clearRealtimeSubscriptions();
     // No need to clear for userFeedback, as it's a stream that will be re-established on next login.
 
     print('[AuthStateManager] Realtime subscriptions cleared');

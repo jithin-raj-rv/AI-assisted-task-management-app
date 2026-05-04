@@ -1,17 +1,17 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:to_do_list/models/goal_step_model.dart';
+import 'package:to_do_list/models/system_model.dart';
 import 'package:to_do_list/services/connectivity_service.dart';
-import 'package:to_do_list/cache/goal_step_cache.dart';
+import 'package:to_do_list/cache/system_cache.dart';
 
-class GoalStepSyncService {
+class SystemSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final ConnectivityService _connectivityService;
-  final GoalStepCache _cache = GoalStepCache();
+  final SystemCache _cache = SystemCache();
 
   List<dynamic> _activeChannels = [];
 
-  GoalStepSyncService(this._connectivityService);
+  SystemSyncService(this._connectivityService);
 
   /// Clear realtime subscriptions
   Future<void> clearRealtimeSubscriptions() async {
@@ -32,26 +32,26 @@ class GoalStepSyncService {
     if (user == null) return;
 
     try {
-      final stepsData = await _supabase.from('goal_steps').select('*').eq('user_id', user.id) as List;
-      final steps = stepsData.map((s) => GoalStep(
+      final systemsData = await _supabase.from('systems').select('*').eq('user_id', user.id) as List;
+      final systems = systemsData.map((s) => System(
         id: s['id'],
         goalId: s['goal_id'],
-        stepText: s['step_text'],
+        systemName: s['system_name'],
         isCompleted: s['is_completed'] ?? false,
-        sortOrder: s['sort_order'] ?? 0,
+        priorityOrder: s['priority_order'] ?? 0,
         userId: s['user_id'],
         createdAt: s['created_at'] != null ? DateTime.parse(s['created_at']) : null,
         updatedAt: s['updated_at'] != null ? DateTime.parse(s['updated_at']) : null,
       )).toList();
 
-      final box = await Hive.openBox<GoalStep>('goal_steps');
-      final newSteps = {for (var step in steps) step.id!: step};
+      final box = await Hive.openBox<System>('systems');
+      final newSystems = {for (var system in systems) system.id!: system};
       final oldKeys = box.keys.toSet();
-      final keysToDelete = oldKeys.difference(newSteps.keys.toSet());
+      final keysToDelete = oldKeys.difference(newSystems.keys.toSet());
       if (keysToDelete.isNotEmpty) {
         box.deleteAll(keysToDelete);
       }
-      box.putAll(newSteps);
+      box.putAll(newSystems);
     } catch (e) {
       print('[GoalStepSync] Error syncing goal steps: $e');
     }
@@ -64,62 +64,62 @@ class GoalStepSyncService {
 
     clearRealtimeSubscriptions();
 
-    final stepsChannel = _supabase.channel('goal_steps_realtime');
-    _activeChannels.add(stepsChannel);
-    print('[GoalStepSync] Setting up real-time subscription for user: ${user.id}');
-    stepsChannel.onPostgresChanges(
+    final systemsChannel = _supabase.channel('systems_realtime');
+    _activeChannels.add(systemsChannel);
+    print('[SystemSync] Setting up real-time subscription for user: ${user.id}');
+    systemsChannel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
-      table: 'goal_steps',
+      table: 'systems',
       callback: (payload) {
-        print('[GoalStepSync] Real-time event received: ${payload.eventType} for table: ${payload.table}');
+        print('[SystemSync] Real-time event received: ${payload.eventType} for table: ${payload.table}');
         final record = payload.newRecord ?? payload.oldRecord;
         // For DELETE events, trust RLS - if we received it, it's for our user
         if (payload.eventType.name != 'delete') {
-          print('[GoalStepSync] user.id: ${user?.id}, record user_id: ${record?['user_id']}');
+          print('[SystemSync] user.id: ${user?.id}, record user_id: ${record?['user_id']}');
           if (record != null && record['user_id'] != user.id) {
-            print('[GoalStepSync] User ID mismatch, skipping event');
+            print('[SystemSync] User ID mismatch, skipping event');
             return;
           }
         }
-        print('[GoalStepSync] Payload record: ${payload.newRecord ?? payload.oldRecord}');
+        print('[SystemSync] Payload record: ${payload.newRecord ?? payload.oldRecord}');
         try {
-          final box = Hive.box<GoalStep>('goal_steps');
+          final box = Hive.box<System>('systems');
           if (payload.eventType.name == 'insert' || payload.eventType.name == 'update') {
             final record = payload.newRecord!;
-            print('[GoalStepSync] Processing ${payload.eventType} for goal step id: ${record['id']}');
-            print('[GoalStepSync] Record fields: id=${record['id']}, goal_id=${record['goal_id']}, step_text=${record['step_text']}, is_completed=${record['is_completed']}, sort_order=${record['sort_order']}, user_id=${record['user_id']}');
-            final step = GoalStep(
+            print('[SystemSync] Processing ${payload.eventType} for system id: ${record['id']}');
+            print('[SystemSync] Record fields: id=${record['id']}, goal_id=${record['goal_id']}, system_name=${record['system_name']}, is_completed=${record['is_completed']}, priority_order=${record['priority_order']}, user_id=${record['user_id']}');
+            final system = System(
               id: record['id'],
               goalId: record['goal_id'],
-              stepText: record['step_text'],
+              systemName: record['system_name'],
               isCompleted: record['is_completed'] ?? false,
-              sortOrder: record['sort_order'] ?? 0,
+              priorityOrder: record['priority_order'] ?? 0,
               userId: record['user_id'],
               createdAt: record['created_at'] != null ? DateTime.parse(record['created_at']) : null,
               updatedAt: record['updated_at'] != null ? DateTime.parse(record['updated_at']) : null,
             );
-            print('[GoalStepSync] Created goal step object: $step');
-            box.put(step.id!, step);
-            print('[GoalStepSync] Updated cache for goal step: ${step.id}');
-            print('[GoalStepSync] Cache now has ${box.length} items');
+            print('[SystemSync] Created system object: $system');
+            box.put(system.id!, system);
+            print('[SystemSync] Updated cache for system: ${system.id}');
+            print('[SystemSync] Cache now has ${box.length} items');
           } else if (payload.eventType.name == 'delete') {
             final record = payload.oldRecord!;
-            print('[GoalStepSync] Processing DELETE for goal step id: ${record['id']}');
+            print('[SystemSync] Processing DELETE for system id: ${record['id']}');
             box.delete(record['id']);
-            print('[GoalStepSync] Deleted from cache: ${record['id']}');
+            print('[SystemSync] Deleted from cache: ${record['id']}');
           }
         } catch (e, stack) {
-          print('[GoalStepSync] Error processing realtime: $e');
-          print('[GoalStepSync] Stack trace: $stack');
+          print('[SystemSync] Error processing realtime: $e');
+          print('[SystemSync] Stack trace: $stack');
         }
       },
     );
-    stepsChannel.subscribe();
+    systemsChannel.subscribe();
   }
 
-  /// Create goal step
-  Future<void> createGoalStep(GoalStep goalStep) async {
+  /// Create system
+  Future<void> createSystem(System system) async {
     if (_connectivityService.currentStatus != ConnectivityStatus.online) {
       throw Exception('Cannot sync while offline');
     }
@@ -130,97 +130,97 @@ class GoalStepSyncService {
     }
 
     final supabaseData = {
-      'id': goalStep.id,
-      'goal_id': goalStep.goalId,
+      'id': system.id,
+      'goal_id': system.goalId,
       'user_id': currentUser.id,
-      'step_text': goalStep.stepText,
-      'is_completed': goalStep.isCompleted,
-      'sort_order': goalStep.sortOrder,
+      'system_name': system.systemName,
+      'is_completed': system.isCompleted,
+      'priority_order': system.priorityOrder,
     };
 
-    await _supabase.from('goal_steps').insert(supabaseData);
-    await _cache.put(goalStep.id!, goalStep);
+    await _supabase.from('systems').insert(supabaseData);
+    await _cache.put(system.id!, system);
   }
 
-  /// Update goal step
-  Future<void> updateGoalStep(String id, GoalStep goalStep) async {
+  /// Update system
+  Future<void> updateSystem(String id, System system) async {
     if (_connectivityService.currentStatus != ConnectivityStatus.online) {
       throw Exception('Cannot sync while offline');
     }
 
     final supabaseData = {
-      'step_text': goalStep.stepText,
-      'is_completed': goalStep.isCompleted,
-      'sort_order': goalStep.sortOrder,
+      'system_name': system.systemName,
+      'is_completed': system.isCompleted,
+      'priority_order': system.priorityOrder,
       'updated_at': DateTime.now().toIso8601String(),
     };
 
-    await _supabase.from('goal_steps').update(supabaseData).eq('id', id);
-    await _cache.put(id, goalStep);
+    await _supabase.from('systems').update(supabaseData).eq('id', id);
+    await _cache.put(id, system);
   }
 
-  /// Delete goal step
-  Future<void> deleteGoalStep(String id) async {
+  /// Delete system
+  Future<void> deleteSystem(String id) async {
     if (_connectivityService.currentStatus != ConnectivityStatus.online) {
       throw Exception('Cannot sync while offline');
     }
 
-    await _supabase.from('goal_steps').delete().eq('id', id);
+    await _supabase.from('systems').delete().eq('id', id);
     await _cache.delete(id);
   }
 
-  /// Reorder goal steps
-  Future<void> reorderGoalSteps(String goalId, List<GoalStep> steps) async {
+  /// Reorder systems
+  Future<void> reorderSystems(String goalId, List<System> systems) async {
     if (_connectivityService.currentStatus != ConnectivityStatus.online) {
       throw Exception('Cannot sync while offline');
     }
 
-    // Update sort order for each step
-    for (int i = 0; i < steps.length; i++) {
-      final step = steps[i];
+    // Update priority order for each system
+    for (int i = 0; i < systems.length; i++) {
+      final system = systems[i];
       final supabaseData = {
-        'sort_order': i,
+        'priority_order': i,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      await _supabase.from('goal_steps').update(supabaseData).eq('id', step.id!);
-      await _cache.put(step.id!, step);
+      await _supabase.from('systems').update(supabaseData).eq('id', system.id!);
+      await _cache.put(system.id!, system);
     }
   }
 
-  /// Get goal steps for a specific goal
-  Future<List<GoalStep>> getGoalSteps(String goalId) async {
+  /// Get systems for a specific goal
+  Future<List<System>> getSystems(String goalId) async {
     final user = _supabase.auth.currentUser;
     if (user == null) return [];
 
     try {
-      final stepsData = await _supabase
-          .from('goal_steps')
+      final systemsData = await _supabase
+          .from('systems')
           .select('*')
           .eq('goal_id', goalId)
           .eq('user_id', user.id)
-          .order('sort_order', ascending: true) as List;
+          .order('priority_order', ascending: true) as List;
 
-      final steps = stepsData.map((s) => GoalStep(
+      final systems = systemsData.map((s) => System(
         id: s['id'],
         goalId: s['goal_id'],
-        stepText: s['step_text'],
+        systemName: s['system_name'],
         isCompleted: s['is_completed'] ?? false,
-        sortOrder: s['sort_order'] ?? 0,
+        priorityOrder: s['priority_order'] ?? 0,
         userId: s['user_id'],
         createdAt: s['created_at'] != null ? DateTime.parse(s['created_at']) : null,
         updatedAt: s['updated_at'] != null ? DateTime.parse(s['updated_at']) : null,
       )).toList();
 
-      return steps;
+      return systems;
     } catch (e) {
-      print('[GoalStepSync] Error fetching goal steps: $e');
+      print('[SystemSync] Error fetching systems: $e');
       return [];
     }
   }
 
-  /// Get a specific goal step by ID
-  Future<GoalStep?> getGoalStepById(String id) async {
+  /// Get a specific system by ID
+  Future<System?> getSystemById(String id) async {
     return await _cache.get(id);
   }
 }

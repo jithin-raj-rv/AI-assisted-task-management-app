@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:to_do_list/models/goal_step_model.dart';
+import 'package:to_do_list/models/system_model.dart';
 import 'package:to_do_list/theme.dart';
 
-class GoalStepTile extends ConsumerWidget {
-  final GoalStep step;
+class SystemTile extends ConsumerWidget {
+  final System system;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleComplete;
@@ -14,9 +14,9 @@ class GoalStepTile extends ConsumerWidget {
   final bool isFirst;
   final bool isLast;
 
-  const GoalStepTile({
+  const SystemTile({
     super.key,
-    required this.step,
+    required this.system,
     required this.onEdit,
     required this.onDelete,
     required this.onToggleComplete,
@@ -29,10 +29,10 @@ class GoalStepTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appTheme = ref.watch(themeProvider);
-    final isCompleted = step.isCompleted;
+    final isCompleted = system.isCompleted;
 
     return Slidable(
-      key: Key(step.id!),
+      key: Key(system.id!),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [
@@ -89,9 +89,9 @@ class GoalStepTile extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Step text
+                  // System name
                   Text(
-                    step.stepText,
+                    system.systemName,
                     style: TextStyle(
                       fontSize: 16,
                       color: isCompleted 
@@ -104,11 +104,11 @@ class GoalStepTile extends ConsumerWidget {
                   
                   const SizedBox(height: 4),
                   
-                  // Step info
+                  // System info
                   Row(
                     children: [
                       Text(
-                        'Step ${step.sortOrder + 1}',
+                        'System ${system.priorityOrder + 1}',
                         style: TextStyle(
                           fontSize: 12,
                           color: appTheme.primary.withOpacity(0.7),

@@ -1,9 +1,9 @@
 import 'package:hive/hive.dart';
 
-part 'goal_step_model.g.dart';
+part 'system_model.g.dart';
 
 @HiveType(typeId: 9)
-class GoalStep extends HiveObject {
+class System extends HiveObject {
   @HiveField(0)
   String? id;
 
@@ -11,13 +11,13 @@ class GoalStep extends HiveObject {
   String goalId;
 
   @HiveField(2)
-  String stepText;
+  String systemName;
 
   @HiveField(3)
   bool isCompleted;
 
   @HiveField(4)
-  int sortOrder;
+  int priorityOrder;
 
   @HiveField(5)
   String? userId;
@@ -28,24 +28,24 @@ class GoalStep extends HiveObject {
   @HiveField(7)
   DateTime? updatedAt;
 
-  GoalStep({
+  System({
     this.id,
     required this.goalId,
-    required this.stepText,
+    required this.systemName,
     this.isCompleted = false,
-    this.sortOrder = 0,
+    this.priorityOrder = 0,
     this.userId,
     this.createdAt,
     this.updatedAt,
   });
 
-  GoalStep clone() {
-    return GoalStep(
+  System clone() {
+    return System(
       id: id,
       goalId: goalId,
-      stepText: stepText,
+      systemName: systemName,
       isCompleted: isCompleted,
-      sortOrder: sortOrder,
+      priorityOrder: priorityOrder,
       userId: userId,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -54,6 +54,6 @@ class GoalStep extends HiveObject {
 
   @override
   String toString() {
-    return 'GoalStep(id: $id, goalId: $goalId, stepText: $stepText, isCompleted: $isCompleted, sortOrder: $sortOrder)';
+    return 'System(id: $id, goalId: $goalId, systemName: $systemName, isCompleted: $isCompleted, priorityOrder: $priorityOrder)';
   }
 }

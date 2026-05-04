@@ -3,7 +3,7 @@ import 'package:to_do_list/services/connectivity_service.dart';
 import 'package:to_do_list/services/fcm_service.dart';
 import 'package:to_do_list/services/todo_sync_service.dart';
 import 'package:to_do_list/services/goal_sync_service.dart';
-import 'package:to_do_list/services/goal_step_sync_service.dart';
+import 'package:to_do_list/services/system_sync_service.dart';
 import 'package:to_do_list/services/reminder_sync_service.dart';
 import 'package:to_do_list/services/settings_sync_service.dart';
 import 'package:to_do_list/services/timer_prompt_sync_service.dart';
@@ -11,6 +11,7 @@ import 'package:to_do_list/services/personality_sync_service.dart';
 import 'package:to_do_list/services/additional_info_sync_service.dart';
 import 'package:to_do_list/services/user_feedback_sync_service.dart';
 import 'package:to_do_list/services/system_prompt_sync_service.dart';
+import 'package:to_do_list/services/to_achieve_sync_service.dart';
 
 // Sync Service Providers
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
@@ -32,9 +33,9 @@ final goalSyncServiceProvider = Provider<GoalSyncService>((ref) {
   return GoalSyncService(connectivity);
 });
 
-final goalStepSyncServiceProvider = Provider<GoalStepSyncService>((ref) {
+final systemSyncServiceProvider = Provider<SystemSyncService>((ref) {
   final connectivity = ref.watch(connectivityServiceProvider);
-  return GoalStepSyncService(connectivity);
+  return SystemSyncService(connectivity);
 });
 
 final reminderSyncServiceProvider = Provider<ReminderSyncService>((ref) {
@@ -65,6 +66,11 @@ final additionalInfoSyncServiceProvider = Provider<AdditionalInfoSyncService>((r
 final systemPromptSyncServiceProvider = Provider<SystemPromptSyncService>((ref) {
   final connectivity = ref.watch(connectivityServiceProvider);
   return SystemPromptSyncService(connectivity);
+});
+
+final toAchieveSyncServiceProvider = Provider<ToAchieveSyncService>((ref) {
+  final connectivity = ref.watch(connectivityServiceProvider);
+  return ToAchieveSyncService(connectivity);
 });
 
 final fcmServiceProvider = Provider<FcmService>((ref) {

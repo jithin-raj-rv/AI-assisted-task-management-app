@@ -9,7 +9,7 @@ import 'package:to_do_list/View/login_page.dart';
 import 'package:to_do_list/View/user_info_collection_page.dart';
 import 'package:to_do_list/View/onboarding_dialog.dart';
 import 'package:to_do_list/View/chatscreen.dart';
-import 'package:to_do_list/models/goal_step_model.dart';
+import 'package:to_do_list/models/system_model.dart';
 import 'package:to_do_list/models/user_info_collection.dart';
 import 'package:to_do_list/theme.dart';
 import 'package:to_do_list/models/scheduled_notification_model.dart';
@@ -20,6 +20,7 @@ import 'package:to_do_list/models/user_feedback_model.dart';
 import 'package:to_do_list/models/personality_trait_model.dart';
 import 'package:to_do_list/models/additional_info_model.dart';
 import 'package:to_do_list/models/system_prompt_model.dart';
+import 'package:to_do_list/models/to_achieve_model.dart';
 import 'package:to_do_list/viewmodels/scheduled_notifications_viewmodel.dart';
 import 'package:to_do_list/viewmodels/timer_prompt_viewmodel.dart';
 import 'package:to_do_list/cache/timer_prompt_cache.dart';
@@ -255,7 +256,7 @@ void main() async {
   // Register Hive Adapters
   Hive.registerAdapter(TodoAdapter());
   Hive.registerAdapter(GoalAdapter());
-  Hive.registerAdapter(GoalStepAdapter());
+  Hive.registerAdapter(SystemAdapter());
   Hive.registerAdapter(ScheduledNotificationAdapter());
   Hive.registerAdapter(ReminderTypeAdapter());
   Hive.registerAdapter(TimerPromptAdapter());
@@ -265,6 +266,7 @@ void main() async {
   Hive.registerAdapter(PersonalityTraitAdapter());
   Hive.registerAdapter(AdditionalInfoAdapter());
   Hive.registerAdapter(SystemPromptModelAdapter());
+  Hive.registerAdapter(ToAchieveAdapter());
 
 
 
@@ -277,6 +279,7 @@ void main() async {
   await Hive.openBox<PersonalityTrait>('personality_traits');
   await Hive.openBox<AdditionalInfo>('additional_info_items');
   await Hive.openBox<SystemPromptModel>('system_prompts');
+  await Hive.openBox<ToAchieve>('to_achieves');
   await Hive.openBox('settings');
 
   // Keep old box for migration

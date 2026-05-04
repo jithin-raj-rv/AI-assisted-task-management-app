@@ -112,14 +112,7 @@ class GoalTile extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    Text(
-                      'Due: ${DateFormat('MMM dd, yyyy').format(goal.targetDate)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: appTheme.background,
-                      ),
-                    ),
-                    const SizedBox(width: 8), // Spacing between deadline and icon
+                    const SizedBox(width: 8),
                     if (goal.isCompleted)
                       const Icon(Icons.check_circle, color: Colors.green, size: 24),
                   ],

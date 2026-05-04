@@ -1,56 +1,53 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal_model.dart';
+part of 'system_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class SystemAdapter extends TypeAdapter<System> {
   @override
-  final int typeId = 8;
+  final int typeId = 9;
 
   @override
-  Goal read(BinaryReader reader) {
+  System read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
+    return System(
       id: fields[0] as String?,
-      title: fields[1] as String,
-      description: fields[2] as String,
-      isCompleted: fields[4] as bool,
+      goalId: fields[1] as String,
+      systemName: fields[2] as String,
+      isCompleted: fields[3] as bool,
+      priorityOrder: fields[4] as int,
       userId: fields[5] as String?,
       createdAt: fields[6] as DateTime?,
       updatedAt: fields[7] as DateTime?,
-      importance: fields[8] as String,
-      urgency: fields[9] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, System obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.goalId)
       ..writeByte(2)
-      ..write(obj.description)
-      ..writeByte(4)
+      ..write(obj.systemName)
+      ..writeByte(3)
       ..write(obj.isCompleted)
+      ..writeByte(4)
+      ..write(obj.priorityOrder)
       ..writeByte(5)
       ..write(obj.userId)
       ..writeByte(6)
       ..write(obj.createdAt)
       ..writeByte(7)
-      ..write(obj.updatedAt)
-      ..writeByte(8)
-      ..write(obj.importance)
-      ..writeByte(9)
-      ..write(obj.urgency);
+      ..write(obj.updatedAt);
   }
 
   @override
@@ -59,7 +56,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is SystemAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

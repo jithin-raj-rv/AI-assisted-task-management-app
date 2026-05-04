@@ -37,7 +37,6 @@ class GoalSyncService {
         id: g['id'],
         title: g['title'],
         description: g['description'] ?? '',
-        targetDate: g['target_date'] != null ? DateTime.parse(g['target_date']) : DateTime.now(),
         isCompleted: g['is_completed'] ?? false,
         userId: g['user_id'],
         createdAt: g['created_at'] != null ? DateTime.parse(g['created_at']) : null,
@@ -90,12 +89,11 @@ class GoalSyncService {
           if (payload.eventType.name == 'insert' || payload.eventType.name == 'update') {
             final record = payload.newRecord!;
             print('[GoalSync] Processing ${payload.eventType} for goal id: ${record['id']}');
-            print('[GoalSync] Record fields: id=${record['id']}, title=${record['title']}, description=${record['description']}, target_date=${record['target_date']}, is_completed=${record['is_completed']}, user_id=${record['user_id']}');
+            print('[GoalSync] Record fields: id=${record['id']}, title=${record['title']}, description=${record['description']}, is_completed=${record['is_completed']}, user_id=${record['user_id']}');
             final goal = Goal(
               id: record['id'],
               title: record['title'],
               description: record['description'] ?? '',
-              targetDate: record['target_date'] != null ? DateTime.parse(record['target_date']) : DateTime.now(),
               isCompleted: record['is_completed'] ?? false,
               userId: record['user_id'],
               createdAt: record['created_at'] != null ? DateTime.parse(record['created_at']) : null,
@@ -138,7 +136,6 @@ class GoalSyncService {
       'user_id': currentUser.id,
       'title': goal.title,
       'description': goal.description,
-      'target_date': goal.targetDate.toIso8601String(),
       'is_completed': goal.isCompleted,
       'importance': goal.importance,
       'urgency': goal.urgency,
@@ -157,7 +154,6 @@ class GoalSyncService {
     final supabaseData = {
       'title': goal.title,
       'description': goal.description,
-      'target_date': goal.targetDate.toIso8601String(),
       'is_completed': goal.isCompleted,
       'importance': goal.importance,
       'urgency': goal.urgency,
