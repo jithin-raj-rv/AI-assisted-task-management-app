@@ -10,7 +10,7 @@ This app started as a **college project** with a simple goal: build a productivi
 
 | Stage | What Happened | What I Learned |
 |---|---|---|
-| **Supabase Edge Functions** | Started here for AI calls. Built working Gemini integration with function calling. | Hit **hard time limits** (Edge Functions timeout). Cold starts made AI responses slow. Great for simple APIs, not for complex agentic workflows. |
+| **Supabase Edge Functions** | Started here for AI calls. Built working Gemini integration with function calling. *(Original Gemini code preserved at `supabase/functions/process-prompt/old gemini process prompt code .txt`)* | Hit **hard time limits** (Edge Functions timeout). Cold starts made AI responses slow. Great for simple APIs, not for complex agentic workflows. |
 | **Agno** | Migrated AI logic to Agno framework. | Learned about **agentic AI frameworks** — how agents, tools, and workflows fit together. But still needed more flexibility. |
 | **Gemini API Expired** | Google's free Gemini API tier expired right before submission. 🫠 | Never rely on a single free API for a deadline. Also discovered Google's new AI usage limits mid-project. |
 | **Mastra (Current)** | Finally settled on **Mastra** for agentic workflows. Hosted separately. | Agentic AI is powerful but complex. Mastra gives the control needed for this app's vision. Still needs optimisation. |
@@ -175,7 +175,7 @@ flutter run
   - Performance optimisation
   - Better error handling for tunnel interruptions
   - Production deployment strategy (instead of local tunnel)
-- **Edge Functions** (OpenRouter) — stripped down, kept as fallback only
+- **Edge Functions** (OpenRouter) — stripped down, kept as fallback only. *(Legacy Gemini code preserved at `supabase/functions/process-prompt/old gemini process prompt code .txt`)*
 - **Full AI transparency UI** — backend works, frontend needs polish
 
 ---
