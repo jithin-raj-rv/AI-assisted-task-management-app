@@ -243,30 +243,28 @@ If you:
 MIT License — feel free to use, modify, and share. If you build something cool, I'd love to hear about it!
 
 ---
-<img width="1220" height="2712" alt="wtd 1" src="https://github.com/user-attachments/assets/fe166006-0297-4e32-8e17-3d2afc627f0c" />
-<img width="1220" height="2712" alt="wtd 2" src="https://github.com/user-attachments/assets/12dbd9fe-e1a6-481f-8130-72b6d8f40634" />
-<img width="1220" height="2712" alt="wtd 3" src="https://github.com/user-attachments/assets/a9ea2477-da75-45e6-aa4b-bada7610c0b8" />
-<img width="1220" height="2712" alt="wtd 4" src="https://github.com/user-attachments/assets/88960c2e-f86e-49c8-bea4-8bcfc662a404" />
-<img width="1220" height="2712" alt="wtd 5" src="https://github.com/user-attachments/assets/30059a39-9f08-4f09-ac30-7d826ef8d2df" />
-<img width="1220" height="2712" alt="wtd 6" src="https://github.com/user-attachments/assets/bd875d51-6db7-4190-b256-3ede084de4d3" />
-<img width="1220" height="2712" alt="wtd 7" src="https://github.com/user-attachments/assets/dbf3c5dd-bd9a-45ff-8715-54a7086234ea" />
-<img width="1220" height="2712" alt="wtd 8" src="https://github.com/user-attachments/assets/9f19c600-9323-46bb-9f92-155085bd76c7" />
-<img width="1220" height="2712" alt="wtd 9" src="https://github.com/user-attachments/assets/a46fed0b-93b0-4fe1-b553-db37328b6e5c" />
-<img width="1220" height="2712" alt="wtd 10" src="https://github.com/user-attachments/assets/abc00883-140b-4021-ab60-aabadf3953a6" />
-<img width="1220" height="2712" alt="wtd 11" src="https://github.com/user-attachments/assets/c9dc4397-be89-41af-bd60-860f6ffde805" />
-<img width="1220" height="2712" alt="wtd 12" src="https://github.com/user-attachments/assets/0fa049fa-adc3-43f4-bf54-6f469c2b6dd5" />
-<img width="1220" height="2712" alt="wtd 13" src="https://github.com/user-attachments/assets/af873530-6136-4334-a841-368f3e2dd0c1" />
-<img width="1220" height="2712" alt="wtd 14" src="https://github.com/user-attachments/assets/ec17a936-93a3-476e-b9cf-ce1b6c5c2d43" />
-<img width="1220" height="2712" alt="wtd 15" src="https://github.com/user-attachments/assets/e2571c37-d193-43d2-9a68-287d9fe49ac3" />
-<img width="1220" height="2712" alt="wtd 16" src="https://github.com/user-attachments/assets/c76ed4e9-5cee-454d-968e-e6d14c1a9277" />
-<img width="1220" height="2712" alt="wtd 17" src="https://github.com/user-attachments/assets/a1bca274-5183-4bac-afac-27dfcc4111d9" />
-<img width="1220" height="2712" alt="wtd 18" src="https://github.com/user-attachments/assets/a5977aa4-3086-49d2-bc60-b007d61b6bd3" />
-<img width="1220" height="2712" alt="wtd 19" src="https://github.com/user-attachments/assets/05af2e30-1622-4f5d-badb-004bee1dc433" />
-<img width="1220" height="2712" alt="wtd 20" src="https://github.com/user-attachments/assets/4814ace6-2db6-4487-bde5-b43103fe8690" />
+![wtd 1](https://github.com/user-attachments/assets/fe166006-0297-4e32-8e17-3d2afc627f0c)
+![wtd 2](https://github.com/user-attachments/assets/12dbd9fe-e1a6-481f-8130-72b6d8f40634)
+![wtd 3](https://github.com/user-attachments/assets/a9ea2477-da75-45e6-aa4b-bada7610c0b8)
+![wtd 4](https://github.com/user-attachments/assets/88960c2e-f86e-49c8-bea4-8bcfc662a404)
+![wtd 5](https://github.com/user-attachments/assets/30059a39-9f08-4f09-ac30-7d826ef8d2df)
+![wtd 6](https://github.com/user-attachments/assets/bd875d51-6db7-4190-b256-3ede084de4d3)
+![wtd 7](https://github.com/user-attachments/assets/dbf3c5dd-bd9a-45ff-8715-54a7086234ea)
+![wtd 8](https://github.com/user-attachments/assets/9f19c600-9323-46bb-9f92-155085bd76c7)
+![wtd 9](https://github.com/user-attachments/assets/a46fed0b-93b0-4fe1-b553-db37328b6e5c)
+![wtd 10](https://github.com/user-attachments/assets/abc00883-140b-4021-ab60-aabadf3953a6)
+![wtd 11](https://github.com/user-attachments/assets/c9dc4397-be89-41af-bd60-860f6ffde805)
+![wtd 12](https://github.com/user-attachments/assets/0fa049fa-adc3-43f4-bf54-6f469c2b6dd5)
+![wtd 13](https://github.com/user-attachments/assets/af873530-6136-4334-a841-368f3e2dd0c1)
+![wtd 14](https://github.com/user-attachments/assets/ec17a936-93a3-476e-b9cf-ce1b6c5c2d43)
+![wtd 15](https://github.com/user-attachments/assets/e2571c37-d193-43d2-9a68-287d9fe49ac3)
+![wtd 16](https://github.com/user-attachments/assets/c76ed4e9-5cee-454d-968e-e6d14c1a9277)
+![wtd 17](https://github.com/user-attachments/assets/a1bca274-5183-4bac-afac-27dfcc4111d9)
+![wtd 18](https://github.com/user-attachments/assets/a5977aa4-3086-49d2-bc60-b007d61b6bd3)
+![wtd 19](https://github.com/user-attachments/assets/05af2e30-1622-4f5d-badb-004bee1dc433)
+![wtd 20](https://github.com/user-attachments/assets/4814ace6-2db6-4487-bde5-b43103fe8690)
 
-
-https://github.com/user-attachments/assets/410bdc15-0105-4a76-a2ab-2a0f8e6aa56a
-
+[Attached Video](https://github.com/user-attachments/assets/410bdc15-0105-4a76-a2ab-2a0f8e6aa56a)
 ---
 
 > *"The thrill of building this without spending a dime made it more fun than any fully-funded project could ever be."*
