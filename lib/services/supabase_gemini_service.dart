@@ -9,7 +9,7 @@ class SupabaseGeminiService {
   // Base URL for the weather agent endpoint. The example curl uses localhost
   // on port 4111. Adjust if the server runs elsewhere (e.g., on an Android
   // emulator use 10.0.2.2).
-  static const String _weatherAgentUrl = 'https://chappu-man-isawsommm.loca.lt/api/agents/weatherAgent/generate';
+  static const String _weatherAgentUrl = 'https://chammpu-man-isawsommm.loca.lt/api/agents/testQueryAgent/generate';
 
   static Future<void> _ensureValidSession() async {
     final session = _supabase.auth.currentSession;
@@ -48,22 +48,13 @@ class SupabaseGeminiService {
           throw Exception('User not authenticated');
         }
 
-        final history = chatHistory?.map((chat) {
-          return {'role': chat.isUser ? 'user' : 'model', 'content': chat.text};
-        }).toList();
-
-        // Send request to Mastra server's chat endpoint.
-        final List<Map<String, String>> messages = [];
-        if (history != null) {
-          messages.addAll(history.map((e) => {
-                'role': e['role'] as String,
-                'content': e['content'] as String,
-              }));
+        final accessToken = _supabase.auth.currentSession?.accessToken;
+        if (accessToken == null || accessToken.isEmpty) {
+          throw Exception('No access token available');
         }
-        messages.add({'role': 'user', 'content': message});
-
+         print("Thisssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssfffffffffffffffffffsssssssssssssssssssssssssss ="+ accessToken);
         // Send request to the weather agent endpoint using the same message
-        // payload format as the example curl command.
+        // payload format as the example curl command: {"messages": "Weather in London"}
         final uri = Uri.parse(_weatherAgentUrl);
         // Increase timeout to 60 seconds to accommodate longer processing.
         final httpResponse = await http
@@ -71,11 +62,11 @@ class SupabaseGeminiService {
               uri,
               headers: {
                 'Content-Type': 'application/json',
-                // The example request does not include an auth token.
+                'Authorization': 'Bearer $accessToken',
               },
               body: jsonEncode(
                 {
-                  "messages": messages
+                  "messages": message
                 }
               ),
             )
@@ -87,99 +78,14 @@ class SupabaseGeminiService {
         if (httpResponse.statusCode == 200) {
           final data = jsonDecode(httpResponse.body) as Map<String, dynamic>;
 
-          // Try path 1: simple { "response": "..." } format
-          if (data.containsKey('response')) {
-            final responseValue = data['response'];
-            if (responseValue is String) {
-              return responseValue;
-            } else if (responseValue is Map) {
-              final mapValue = responseValue as Map<String, dynamic>;
-              return (mapValue['text'] ??
-                      mapValue['content'] ??
-                      mapValue['message'] ??
-                      jsonEncode(mapValue))
-                  as String;
-            } else {
-              return responseValue?.toString() ?? 'No response from AI';
-            }
+          //  Mastra's clean top-level "text" field
+          if (data.containsKey('text') && data['text'] is String && data['text']!="") {
+            return data['text'] as String;
           }
-
-          // Try path 2: OpenRouter response format with `messages` array
-          if (data.containsKey('messages') && data['messages'] is List) {
-            final messages = data['messages'] as List;
-            // Find the last assistant message
-            for (var i = messages.length - 1; i >= 0; i--) {
-              final msg = messages[i];
-              if (msg is Map && msg['role'] == 'assistant') {
-                final content = msg['content'];
-                if (content is String) {
-                  return content;
-                } else if (content is List) {
-                  // Content is an array of parts (reasoning, text, etc.)
-                  for (var part in content) {
-                    if (part is Map && part['type'] == 'text') {
-                      return part['text'] as String;
-                    }
-                  }
-                }
-              }
-            }
+          else {
+            return "No response from AI";
           }
-
-          // Try path 3: `uiMessages` array with `parts`
-          if (data.containsKey('uiMessages') && data['uiMessages'] is List) {
-            final uiMessages = data['uiMessages'] as List;
-            for (var i = uiMessages.length - 1; i >= 0; i--) {
-              final msg = uiMessages[i];
-              if (msg is Map && msg['role'] == 'assistant') {
-                final parts = msg['parts'];
-                if (parts is List) {
-                  for (var part in parts) {
-                    if (part is Map && part['type'] == 'text') {
-                      return part['text'] as String;
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          // Try path 4: `dbMessages` array with nested `content.parts`
-          if (data.containsKey('dbMessages') && data['dbMessages'] is List) {
-            final dbMessages = data['dbMessages'] as List;
-            for (var i = dbMessages.length - 1; i >= 0; i--) {
-              final msg = dbMessages[i];
-              if (msg is Map && msg['role'] == 'assistant') {
-                final content = msg['content'];
-                if (content is Map) {
-                  final parts = content['parts'];
-                  if (parts is List) {
-                    for (var part in parts) {
-                      if (part is Map && part['type'] == 'text') {
-                        return part['text'] as String;
-                      }
-                    }
-                  }
-                  // Fallback to `content.content` or `content.text`
-                  if (content['content'] is String) {
-                    return content['content'] as String;
-                  }
-                  if (content['text'] is String) {
-                    return content['text'] as String;
-                  }
-                }
-              }
-            }
-          }
-
-          // Last resort: try to find any string field named 'text' or 'content'
-          for (final key in ['text', 'content', 'message', 'answer']) {
-            if (data[key] is String) {
-              return data[key] as String;
-            }
-          }
-
-          return 'No response from AI';
+          
         } else if (httpResponse.statusCode == 401 && attempt < maxRetries) {
           // Unauthorized – refresh Supabase session and retry.
           await _supabase.auth.refreshSession();
@@ -248,7 +154,7 @@ class SupabaseGeminiService {
           throw Exception(
               'Service temporarily busy. Please wait a moment and try again.');
         } else {
-          print('[GeminiService] Unexpected error: $e');
+          print(' Unexpected error: $e');
           throw Exception(
               'An unexpected error occurred: ${e.toString()}. Please try again.');
         }
