@@ -267,5 +267,6 @@ MIT License — feel free to use, modify, and share. If you build something cool
 
 https://github.com/user-attachments/assets/410bdc15-0105-4a76-a2ab-2a0f8e6aa56a
 
+---
 
 > *"The thrill of building this without spending a dime made it more fun than any fully-funded project could ever be."*
